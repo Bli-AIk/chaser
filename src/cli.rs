@@ -38,4 +38,10 @@ pub enum Commands {
     },
     /// Reset config to default
     Reset,
+    /// Set interface language
+    Lang {
+        /// Language code (en, zh-cn)
+        #[arg(action = clap::ArgAction::Set)]
+        language: String,
+    },
 }
