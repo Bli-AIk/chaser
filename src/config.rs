@@ -8,6 +8,7 @@ pub struct Config {
     pub watch_paths: Vec<String>,
     pub recursive: bool,
     pub ignore_patterns: Vec<String>,
+    pub language: Option<String>,
 }
 
 impl Default for Config {
@@ -21,6 +22,7 @@ impl Default for Config {
                 ".git/**".to_string(),
                 "target/**".to_string(),
             ],
+            language: None, // Use system locale by default
         }
     }
 }
@@ -53,12 +55,13 @@ impl Config {
             let config: Config = serde_yaml::from_str(&content)
                 .context("Failed to parse config file")?;
             
-            println!("✓ Loaded config from: {}", config_path.display());
+            // Don't use i18n here as it might not be initialized yet
+            eprintln!("✓ Loaded config from: {}", config_path.display());
             Ok(config)
         } else {
             let default_config = Self::default();
             default_config.save()?;
-            println!("✓ Created default config at: {}", config_path.display());
+            eprintln!("✓ Created default config at: {}", config_path.display());
             Ok(default_config)
         }
     }
@@ -73,7 +76,8 @@ impl Config {
         fs::write(&config_path, content)
             .context("Failed to write config file")?;
         
-        println!("✓ Config saved to: {}", config_path.display());
+        // Use eprintln to avoid i18n dependency during early initialization
+        eprintln!("✓ Config saved to: {}", config_path.display());
         Ok(())
     }
 
@@ -81,9 +85,9 @@ impl Config {
     pub fn add_path(&mut self, path: String) -> Result<()> {
         if !self.watch_paths.contains(&path) {
             self.watch_paths.push(path.clone());
-            println!("✓ Added watch path: {}", path);
+            println!("{}", crate::i18n::tf("msg_path_added", &[&path]));
         } else {
-            println!("⚠ Path already exists: {}", path);
+            println!("{}", crate::i18n::tf("msg_path_exists", &[&path]));
         }
         Ok(())
     }
@@ -92,23 +96,87 @@ impl Config {
     pub fn remove_path(&mut self, path: &str) -> Result<()> {
         if let Some(pos) = self.watch_paths.iter().position(|p| p == path) {
             self.watch_paths.remove(pos);
-            println!("✓ Removed watch path: {}", path);
+            println!("{}", crate::i18n::tf("msg_path_removed", &[path]));
         } else {
-            println!("⚠ Path not found: {}", path);
+            println!("{}", crate::i18n::tf("msg_path_not_found", &[path]));
         }
         Ok(())
     }
 
     /// List all watch paths
     pub fn list_paths(&self) {
-        println!("Watch paths:");
+        println!("{}", crate::i18n::t("ui_watch_paths"));
         for (i, path) in self.watch_paths.iter().enumerate() {
             println!("  {}. {}", i + 1, path);
         }
         
-        println!("\nSettings:");
-        println!("  Recursive: {}", self.recursive);
+        println!("\n{}", crate::i18n::t("ui_settings"));
+        println!("  {}", crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()]));
         println!("  Ignore patterns: {:?}", self.ignore_patterns);
+        
+        if let Some(ref lang) = self.language {
+            println!("  Language: {}", lang);
+        } else {
+            println!("  Language: {} (auto)", self.get_effective_language());
+        }
+    }
+
+    /// Load config with i18n messages (use after i18n is initialized)
+    pub fn load_with_i18n() -> Result<Self> {
+        let config_path = Self::config_file_path()?;
+        
+        if config_path.exists() {
+            let content = fs::read_to_string(&config_path)
+                .context("Failed to read config file")?;
+            
+            let config: Config = serde_yaml::from_str(&content)
+                .context("Failed to parse config file")?;
+            
+            println!("{}", crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string()]));
+            Ok(config)
+        } else {
+            let default_config = Self::default();
+            default_config.save_with_i18n()?;
+            println!("{}", crate::i18n::tf("msg_config_created", &[&config_path.display().to_string()]));
+            Ok(default_config)
+        }
+    }
+
+    /// Save config with i18n messages (use after i18n is initialized)
+    pub fn save_with_i18n(&self) -> Result<()> {
+        let config_path = Self::config_file_path()?;
+        
+        let content = serde_yaml::to_string(self)
+            .context("Failed to serialize config")?;
+        
+        fs::write(&config_path, content)
+            .context("Failed to write config file")?;
+        
+        println!("{}", crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string()]));
+        Ok(())
+    }
+    pub fn set_language(&mut self, language: Option<String>) -> Result<()> {
+        self.language = language;
+        Ok(())
+    }
+
+    /// Get effective language (config or system default)
+    pub fn get_effective_language(&self) -> String {
+        if let Some(ref lang) = self.language {
+            lang.clone()
+        } else {
+            // Get system locale - simplified version
+            if let Some(locale) = std::env::var("LANG").ok() {
+                let locale_lower = locale.to_lowercase();
+                if locale_lower.starts_with("zh") && (locale_lower.contains("cn") || locale_lower.contains("hans")) {
+                    "zh-cn".to_string()
+                } else {
+                    "en".to_string()
+                }
+            } else {
+                "en".to_string()
+            }
+        }
     }
 
     /// Validate paths exist

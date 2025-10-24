@@ -1,15 +1,24 @@
 mod config;
 mod cli;
+mod i18n;
 
 use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Commands};
 use config::Config;
+use i18n::{t, tf, init_i18n_with_locale, set_locale, available_locales, is_locale_supported};
 use notify::{Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;
 use std::sync::mpsc::channel;
 
 fn main() -> Result<()> {
+    // Load config first to get language preference
+    let config = Config::load().unwrap_or_default();
+    let locale = config.get_effective_language();
+    
+    // Initialize i18n with the preferred language
+    init_i18n_with_locale(&locale)?;
+    
     let cli = Cli::parse();
 
     match cli.command {
@@ -19,51 +28,62 @@ fn main() -> Result<()> {
 }
 
 fn handle_command(command: Commands) -> Result<()> {
-    let mut config = Config::load()?;
+    let mut config = Config::load_with_i18n()?;
 
     match command {
         Commands::Add { path } => {
             config.add_path(path)?;
-            config.save()?;
+            config.save_with_i18n()?;
         }
         Commands::Remove { path } => {
             config.remove_path(&path)?;
-            config.save()?;
+            config.save_with_i18n()?;
         }
         Commands::List => {
             config.list_paths();
         }
         Commands::Config => {
             let config_path = Config::config_file_path()?;
-            println!("Config file location: {}", config_path.display());
-            println!("You can edit this file directly if needed.");
+            println!("{}", tf("msg_config_location", &[&config_path.display().to_string()]));
+            println!("{}", t("msg_config_edit_hint"));
         }
         Commands::Recursive { enabled } => {
             let enabled_bool = match enabled.to_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => true,
                 "false" | "0" | "no" | "off" => false,
                 _ => {
-                    println!("❌ Invalid value: '{}'. Use true/false, yes/no, 1/0, or on/off", enabled);
+                    println!("{}", tf("msg_recursive_invalid", &[&enabled]));
                     return Ok(());
                 }
             };
             config.recursive = enabled_bool;
-            println!("✓ Recursive watching set to: {}", enabled_bool);
-            config.save()?;
+            println!("{}", tf("msg_recursive_set", &[&enabled_bool.to_string()]));
+            config.save_with_i18n()?;
         }
         Commands::Ignore { pattern } => {
             if !config.ignore_patterns.contains(&pattern) {
                 config.ignore_patterns.push(pattern.clone());
-                println!("✓ Added ignore pattern: {}", pattern);
-                config.save()?;
+                println!("{}", tf("msg_ignore_added", &[&pattern]));
+                config.save_with_i18n()?;
             } else {
-                println!("⚠ Pattern already exists: {}", pattern);
+                println!("{}", tf("msg_ignore_exists", &[&pattern]));
             }
         }
         Commands::Reset => {
             config = Config::default();
-            config.save()?;
-            println!("✓ Config reset to default values");
+            config.save_with_i18n()?;
+            println!("{}", t("msg_config_reset"));
+        }
+        Commands::Lang { language } => {
+            if is_locale_supported(&language) {
+                config.set_language(Some(language.clone()))?;
+                config.save_with_i18n()?;
+                set_locale(&language);
+                println!("{}", tf("msg_language_set", &[&language]));
+            } else {
+                let available = available_locales().join(", ");
+                println!("{}", tf("msg_language_invalid", &[&language, &available]));
+            }
         }
     }
 
@@ -71,16 +91,16 @@ fn handle_command(command: Commands) -> Result<()> {
 }
 
 fn run_monitor() -> Result<()> {
-    let config = Config::load()?;
+    let config = Config::load_with_i18n()?;
     
     // Validate paths
     let invalid_paths = config.validate_paths();
     if !invalid_paths.is_empty() {
-        println!("⚠ Warning: Some paths don't exist:");
+        println!("{}", t("msg_invalid_paths_warning"));
         for path in &invalid_paths {
             println!("  - {}", path);
         }
-        println!("You can add valid paths using: chaser add <path>");
+        println!("{}", t("msg_add_valid_paths_hint"));
     }
 
     let valid_paths: Vec<_> = config.watch_paths.iter()
@@ -88,16 +108,16 @@ fn run_monitor() -> Result<()> {
         .collect();
 
     if valid_paths.is_empty() {
-        println!("❌ No valid paths to monitor. Add some paths using: chaser add <path>");
+        println!("{}", t("msg_no_valid_paths"));
         return Ok(());
     }
 
-    println!("Starting file monitoring...");
-    println!("Monitoring {} path(s):", valid_paths.len());
+    println!("{}", t("msg_monitoring_start"));
+    println!("{}", tf("msg_monitoring_paths", &[&valid_paths.len().to_string()]));
     for path in &valid_paths {
         println!("  - {}", path);
     }
-    println!("Recursive: {}", config.recursive);
+    println!("{}", tf("msg_monitoring_recursive", &[&config.recursive.to_string()]));
 
     watch(&config)
 }
@@ -118,11 +138,11 @@ fn watch(config: &Config) -> Result<()> {
     for path in &config.watch_paths {
         if Path::new(path).exists() {
             watcher.watch(Path::new(path), recursive_mode)?;
-            println!("✓ Watching: {}", path);
+            println!("{}", tf("msg_watching_path", &[path]));
         }
     }
 
-    println!("File monitoring started, press Ctrl+C to exit...\n");
+    println!("{}", t("msg_monitoring_started"));
 
     for res in rx {
         match res {
@@ -132,7 +152,7 @@ fn watch(config: &Config) -> Result<()> {
                 }
                 handle_event(event);
             }
-            Err(e) => println!("Monitoring error: {:?}", e),
+            Err(e) => println!("{}", tf("msg_monitoring_error", &[&format!("{:?}", e)])),
         }
     }
 
@@ -169,7 +189,7 @@ fn handle_event(event: Event) {
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
-                println!("✓ File created: {}", path.display());
+                println!("{}", tf("msg_file_created", &[&path.display().to_string()]));
             }
         }
         EventKind::Modify(modify_kind) => {
@@ -179,29 +199,29 @@ fn handle_event(event: Event) {
                         notify::event::RenameMode::Both => {
                             // This is the actual rename event with both old and new paths
                             if event.paths.len() >= 2 {
-                                println!("🔄 File renamed:");
-                                println!("   From: {}", event.paths[0].display());
-                                println!("   To: {}", event.paths[1].display());
+                                println!("{}", t("msg_file_renamed"));
+                                println!("{}", tf("msg_rename_from", &[&event.paths[0].display().to_string()]));
+                                println!("{}", tf("msg_rename_to", &[&event.paths[1].display().to_string()]));
                             }
                         }
                         notify::event::RenameMode::From => {
                             // First phase of rename, can be ignored for cleaner output
-                            println!("🔄 Rename started: {}", event.paths[0].display());
+                            println!("{}", tf("msg_rename_started", &[&event.paths[0].display().to_string()]));
                         }
                         notify::event::RenameMode::To => {
                             // Second phase of rename, can be ignored for cleaner output
-                            println!("🔄 Rename completed: {}", event.paths[0].display());
+                            println!("{}", tf("msg_rename_completed", &[&event.paths[0].display().to_string()]));
                         }
                         _ => {
                             for path in &event.paths {
-                                println!("📝 Name modified: {}", path.display());
+                                println!("{}", tf("msg_name_modified", &[&path.display().to_string()]));
                             }
                         }
                     }
                 }
                 notify::event::ModifyKind::Data(_) => {
                     for path in &event.paths {
-                        println!("📝 File content modified: {}", path.display());
+                        println!("{}", tf("msg_file_content_modified", &[&path.display().to_string()]));
                     }
                 }
                 notify::event::ModifyKind::Metadata(_) => {
@@ -209,14 +229,14 @@ fn handle_event(event: Event) {
                 }
                 _ => {
                     for path in &event.paths {
-                        println!("📝 File modified: {}", path.display());
+                        println!("{}", tf("msg_file_modified", &[&path.display().to_string()]));
                     }
                 }
             }
         }
         EventKind::Remove(_) => {
             for path in &event.paths {
-                println!("🗑️ File deleted: {}", path.display());
+                println!("{}", tf("msg_file_deleted", &[&path.display().to_string()]));
             }
         }
         EventKind::Access(_) => {
