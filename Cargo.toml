@@ -1,0 +1,11 @@
+[package]
+name = "chaser"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Bli-AIk/chaser"
+description = "An automated file path synchronization tool that updates changed paths in configuration files in real time."
+
+[dependencies]
+notify = "8.2.0"
+serde = "1.0.228"
