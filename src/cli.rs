@@ -64,6 +64,13 @@ pub enum Commands {
         #[arg(long)]
         once: bool,
     },
+    /// Manually update a path in target files
+    UpdatePath {
+        /// Old path to replace
+        old_path: String,
+        /// New path to replace with
+        new_path: String,
+    },
 }
 
 #[cfg(test)]

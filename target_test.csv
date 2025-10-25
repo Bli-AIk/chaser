@@ -1,4 +1,3 @@
 path,type
 ./test_files/documentation,directory
 ./test_files/src,directory
-./test_files/src/main.rs,file

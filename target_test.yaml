@@ -1,4 +1,3 @@
 paths:
 - ./test_files/documentation
 - ./test_files/src
-- ./test_files/src/main.rs
