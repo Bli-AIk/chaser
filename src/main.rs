@@ -131,6 +131,9 @@ fn handle_command(command: Commands) -> Result<()> {
         Commands::Sync { once } => {
             run_path_sync(&config, once)?;
         }
+        Commands::UpdatePath { old_path, new_path } => {
+            update_path_manually(&config, &old_path, &new_path)?;
+        }
     }
 
     Ok(())
@@ -158,6 +161,17 @@ fn run_monitor() -> Result<()> {
     if valid_paths.is_empty() {
         println!("{}", t("msg_no_valid_paths").red());
         return Ok(());
+    }
+
+    // Show target files list on startup
+    if !config.target_files.is_empty() {
+        println!("\n{} Target Files:", "📋".bright_yellow());
+        for (i, target_file) in config.target_files.iter().enumerate() {
+            let exists = Path::new(target_file).exists();
+            let status = if exists { "✓".green().to_string() } else { "✗".red().to_string() };
+            println!("  {} {} {}", i + 1, status, target_file.bright_white());
+        }
+        println!();
     }
 
     println!("{}", t("msg_monitoring_start").bright_green());
@@ -237,21 +251,72 @@ fn handle_event(event: Event) {
                         notify::event::RenameMode::Both => {
                             // This is the actual rename event with both old and new paths
                             if event.paths.len() >= 2 {
+                                let old_path = &event.paths[0];
+                                let new_path = &event.paths[1];
+                                
                                 println!("{}", t("msg_file_renamed").yellow());
                                 println!(
                                     "{}",
                                     tf(
                                         "msg_rename_from",
-                                        &[&event.paths[0].display().to_string().cyan().to_string()]
+                                        &[&old_path.display().to_string().cyan().to_string()]
                                     )
                                 );
                                 println!(
                                     "{}",
                                     tf(
                                         "msg_rename_to",
-                                        &[&event.paths[1].display().to_string().cyan().to_string()]
+                                        &[&new_path.display().to_string().cyan().to_string()]
                                     )
                                 );
+
+                                // Try to sync path changes to target files
+                                let config = Config::load_with_i18n().unwrap_or_default();
+                                if !config.target_files.is_empty() {
+                                    // Convert absolute paths to relative paths for better matching
+                                    let current_dir = std::env::current_dir().unwrap_or_default();
+                                    
+                                    let old_path_str = if let Ok(relative) = old_path.strip_prefix(&current_dir) {
+                                        format!("./{}", relative.display())
+                                    } else {
+                                        old_path.display().to_string()
+                                    };
+                                    
+                                    let new_path_str = if let Ok(relative) = new_path.strip_prefix(&current_dir) {
+                                        format!("./{}", relative.display())
+                                    } else {
+                                        new_path.display().to_string()
+                                    };
+                                    
+                                    match PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone()) {
+                                        Ok(mut manager) => {
+                                            match manager.sync_path_change(&old_path_str, &new_path_str) {
+                                                Ok(()) => {
+                                                    println!(
+                                                        "{} {} → {}",
+                                                        "🔄 Target files updated:".bright_green(),
+                                                        old_path_str.bright_white(),
+                                                        new_path_str.bright_green()
+                                                    );
+                                                }
+                                                Err(e) => {
+                                                    println!(
+                                                        "{} Failed to update target files: {}",
+                                                        "⚠️".yellow(),
+                                                        e.to_string().red()
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            println!(
+                                                "{} Could not initialize path sync: {}",
+                                                "⚠️".yellow(),
+                                                e.to_string().red()
+                                            );
+                                        }
+                                    }
+                                }
                             }
                         }
                         notify::event::RenameMode::From => {
@@ -347,7 +412,7 @@ fn show_sync_status(config: &Config) -> Result<()> {
         return Ok(());
     }
 
-    let manager = PathSyncManager::new(config.target_files.clone())?;
+    let manager = PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
     manager.print_status();
 
     Ok(())
@@ -358,7 +423,8 @@ fn run_path_sync(config: &Config, once: bool) -> Result<()> {
 
     println!("{}", t("msg_starting_sync").bright_green());
 
-    let mut manager = PathSyncManager::new(config.target_files.clone())?;
+    let mut manager =
+        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
 
     if once {
         println!("{}", t("msg_sync_once_mode").bright_blue());
@@ -376,6 +442,28 @@ fn run_path_sync(config: &Config, once: bool) -> Result<()> {
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
     }
+
+    Ok(())
+}
+
+fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!(
+        "{} Manually updating path: {} → {}",
+        "🔧".bright_yellow(),
+        old_path.bright_white(),
+        new_path.bright_green()
+    );
+
+    let mut manager =
+        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
+    manager.sync_path_change(old_path, new_path)?;
+
+    println!(
+        "{} Path update completed successfully!",
+        "✅".bright_green()
+    );
 
     Ok(())
 }
