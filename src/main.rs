@@ -1,13 +1,15 @@
-mod config;
 mod cli;
+mod config;
 mod i18n;
 
 use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Commands};
 use config::Config;
-use i18n::{t, tf, init_i18n_with_locale, set_locale, available_locales, is_locale_supported};
-use notify::{Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use i18n::{available_locales, init_i18n_with_locale, is_locale_supported, set_locale, t, tf};
+use notify::{
+    Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
 use std::path::Path;
 use std::sync::mpsc::channel;
 
@@ -15,10 +17,10 @@ fn main() -> Result<()> {
     // Load config first to get language preference
     let config = Config::load().unwrap_or_default();
     let locale = config.get_effective_language();
-    
+
     // Initialize i18n with the preferred language
     init_i18n_with_locale(&locale)?;
-    
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -44,7 +46,10 @@ fn handle_command(command: Commands) -> Result<()> {
         }
         Commands::Config => {
             let config_path = Config::config_file_path()?;
-            println!("{}", tf("msg_config_location", &[&config_path.display().to_string()]));
+            println!(
+                "{}",
+                tf("msg_config_location", &[&config_path.display().to_string()])
+            );
             println!("{}", t("msg_config_edit_hint"));
         }
         Commands::Recursive { enabled } => {
@@ -92,7 +97,7 @@ fn handle_command(command: Commands) -> Result<()> {
 
 fn run_monitor() -> Result<()> {
     let config = Config::load_with_i18n()?;
-    
+
     // Validate paths
     let invalid_paths = config.validate_paths();
     if !invalid_paths.is_empty() {
@@ -103,7 +108,9 @@ fn run_monitor() -> Result<()> {
         println!("{}", t("msg_add_valid_paths_hint"));
     }
 
-    let valid_paths: Vec<_> = config.watch_paths.iter()
+    let valid_paths: Vec<_> = config
+        .watch_paths
+        .iter()
         .filter(|p| Path::new(p).exists())
         .collect();
 
@@ -113,11 +120,17 @@ fn run_monitor() -> Result<()> {
     }
 
     println!("{}", t("msg_monitoring_start"));
-    println!("{}", tf("msg_monitoring_paths", &[&valid_paths.len().to_string()]));
+    println!(
+        "{}",
+        tf("msg_monitoring_paths", &[&valid_paths.len().to_string()])
+    );
     for path in &valid_paths {
         println!("  - {}", path);
     }
-    println!("{}", tf("msg_monitoring_recursive", &[&config.recursive.to_string()]));
+    println!(
+        "{}",
+        tf("msg_monitoring_recursive", &[&config.recursive.to_string()])
+    );
 
     watch(&config)
 }
@@ -162,7 +175,7 @@ fn watch(config: &Config) -> Result<()> {
 fn should_ignore_event(event: &Event, ignore_patterns: &[String]) -> bool {
     for path in &event.paths {
         let path_str = path.to_string_lossy();
-        
+
         for pattern in ignore_patterns {
             // Simple pattern matching - you could use a more sophisticated glob library
             if pattern.contains("**") {
@@ -200,28 +213,52 @@ fn handle_event(event: Event) {
                             // This is the actual rename event with both old and new paths
                             if event.paths.len() >= 2 {
                                 println!("{}", t("msg_file_renamed"));
-                                println!("{}", tf("msg_rename_from", &[&event.paths[0].display().to_string()]));
-                                println!("{}", tf("msg_rename_to", &[&event.paths[1].display().to_string()]));
+                                println!(
+                                    "{}",
+                                    tf("msg_rename_from", &[&event.paths[0].display().to_string()])
+                                );
+                                println!(
+                                    "{}",
+                                    tf("msg_rename_to", &[&event.paths[1].display().to_string()])
+                                );
                             }
                         }
                         notify::event::RenameMode::From => {
                             // First phase of rename, can be ignored for cleaner output
-                            println!("{}", tf("msg_rename_started", &[&event.paths[0].display().to_string()]));
+                            println!(
+                                "{}",
+                                tf(
+                                    "msg_rename_started",
+                                    &[&event.paths[0].display().to_string()]
+                                )
+                            );
                         }
                         notify::event::RenameMode::To => {
                             // Second phase of rename, can be ignored for cleaner output
-                            println!("{}", tf("msg_rename_completed", &[&event.paths[0].display().to_string()]));
+                            println!(
+                                "{}",
+                                tf(
+                                    "msg_rename_completed",
+                                    &[&event.paths[0].display().to_string()]
+                                )
+                            );
                         }
                         _ => {
                             for path in &event.paths {
-                                println!("{}", tf("msg_name_modified", &[&path.display().to_string()]));
+                                println!(
+                                    "{}",
+                                    tf("msg_name_modified", &[&path.display().to_string()])
+                                );
                             }
                         }
                     }
                 }
                 notify::event::ModifyKind::Data(_) => {
                     for path in &event.paths {
-                        println!("{}", tf("msg_file_content_modified", &[&path.display().to_string()]));
+                        println!(
+                            "{}",
+                            tf("msg_file_content_modified", &[&path.display().to_string()])
+                        );
                     }
                 }
                 notify::event::ModifyKind::Metadata(_) => {
@@ -229,7 +266,10 @@ fn handle_event(event: Event) {
                 }
                 _ => {
                     for path in &event.paths {
-                        println!("{}", tf("msg_file_modified", &[&path.display().to_string()]));
+                        println!(
+                            "{}",
+                            tf("msg_file_modified", &[&path.display().to_string()])
+                        );
                     }
                 }
             }
@@ -239,11 +279,7 @@ fn handle_event(event: Event) {
                 println!("{}", tf("msg_file_deleted", &[&path.display().to_string()]));
             }
         }
-        EventKind::Access(_) => {
-            // Access events are usually too frequent, ignore them
-        }
-        EventKind::Any | EventKind::Other => {
-            // These are catch-all events that are already handled by more specific events above
-        }
+        EventKind::Access(_) => {}
+        EventKind::Any | EventKind::Other => {}
     }
 }

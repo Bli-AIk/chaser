@@ -30,31 +30,28 @@ impl Default for Config {
 impl Config {
     /// Get the config file path (cross-platform)
     pub fn config_file_path() -> Result<PathBuf> {
-        let config_dir = dirs::config_dir()
-            .context("Failed to get config directory")?;
-        
+        let config_dir = dirs::config_dir().context("Failed to get config directory")?;
+
         let app_config_dir = config_dir.join("chaser");
-        
+
         // Create config directory if it doesn't exist
         if !app_config_dir.exists() {
-            fs::create_dir_all(&app_config_dir)
-                .context("Failed to create config directory")?;
+            fs::create_dir_all(&app_config_dir).context("Failed to create config directory")?;
         }
-        
+
         Ok(app_config_dir.join("config.yaml"))
     }
 
     /// Load config from file, create default if not exists
     pub fn load() -> Result<Self> {
         let config_path = Self::config_file_path()?;
-        
+
         if config_path.exists() {
-            let content = fs::read_to_string(&config_path)
-                .context("Failed to read config file")?;
-            
-            let config: Config = serde_yaml::from_str(&content)
-                .context("Failed to parse config file")?;
-            
+            let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
+
+            let config: Config =
+                serde_yaml::from_str(&content).context("Failed to parse config file")?;
+
             // Don't use i18n here as it might not be initialized yet
             eprintln!("✓ Loaded config from: {}", config_path.display());
             Ok(config)
@@ -69,13 +66,11 @@ impl Config {
     /// Save config to file
     pub fn save(&self) -> Result<()> {
         let config_path = Self::config_file_path()?;
-        
-        let content = serde_yaml::to_string(self)
-            .context("Failed to serialize config")?;
-        
-        fs::write(&config_path, content)
-            .context("Failed to write config file")?;
-        
+
+        let content = serde_yaml::to_string(self).context("Failed to serialize config")?;
+
+        fs::write(&config_path, content).context("Failed to write config file")?;
+
         // Use eprintln to avoid i18n dependency during early initialization
         eprintln!("✓ Config saved to: {}", config_path.display());
         Ok(())
@@ -109,11 +104,14 @@ impl Config {
         for (i, path) in self.watch_paths.iter().enumerate() {
             println!("  {}. {}", i + 1, path);
         }
-        
+
         println!("\n{}", crate::i18n::t("ui_settings"));
-        println!("  {}", crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()]));
+        println!(
+            "  {}",
+            crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()])
+        );
         println!("  Ignore patterns: {:?}", self.ignore_patterns);
-        
+
         if let Some(ref lang) = self.language {
             println!("  Language: {}", lang);
         } else {
@@ -124,20 +122,25 @@ impl Config {
     /// Load config with i18n messages (use after i18n is initialized)
     pub fn load_with_i18n() -> Result<Self> {
         let config_path = Self::config_file_path()?;
-        
+
         if config_path.exists() {
-            let content = fs::read_to_string(&config_path)
-                .context("Failed to read config file")?;
-            
-            let config: Config = serde_yaml::from_str(&content)
-                .context("Failed to parse config file")?;
-            
-            println!("{}", crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string()]));
+            let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
+
+            let config: Config =
+                serde_yaml::from_str(&content).context("Failed to parse config file")?;
+
+            println!(
+                "{}",
+                crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string()])
+            );
             Ok(config)
         } else {
             let default_config = Self::default();
             default_config.save_with_i18n()?;
-            println!("{}", crate::i18n::tf("msg_config_created", &[&config_path.display().to_string()]));
+            println!(
+                "{}",
+                crate::i18n::tf("msg_config_created", &[&config_path.display().to_string()])
+            );
             Ok(default_config)
         }
     }
@@ -145,14 +148,15 @@ impl Config {
     /// Save config with i18n messages (use after i18n is initialized)
     pub fn save_with_i18n(&self) -> Result<()> {
         let config_path = Self::config_file_path()?;
-        
-        let content = serde_yaml::to_string(self)
-            .context("Failed to serialize config")?;
-        
-        fs::write(&config_path, content)
-            .context("Failed to write config file")?;
-        
-        println!("{}", crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string()]));
+
+        let content = serde_yaml::to_string(self).context("Failed to serialize config")?;
+
+        fs::write(&config_path, content).context("Failed to write config file")?;
+
+        println!(
+            "{}",
+            crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string()])
+        );
         Ok(())
     }
     pub fn set_language(&mut self, language: Option<String>) -> Result<()> {
@@ -168,7 +172,9 @@ impl Config {
             // Get system locale - simplified version
             if let Some(locale) = std::env::var("LANG").ok() {
                 let locale_lower = locale.to_lowercase();
-                if locale_lower.starts_with("zh") && (locale_lower.contains("cn") || locale_lower.contains("hans")) {
+                if locale_lower.starts_with("zh")
+                    && (locale_lower.contains("cn") || locale_lower.contains("hans"))
+                {
                     "zh-cn".to_string()
                 } else {
                     "en".to_string()
@@ -182,13 +188,13 @@ impl Config {
     /// Validate paths exist
     pub fn validate_paths(&self) -> Vec<String> {
         let mut invalid_paths = Vec::new();
-        
+
         for path in &self.watch_paths {
             if !Path::new(path).exists() {
                 invalid_paths.push(path.clone());
             }
         }
-        
+
         invalid_paths
     }
 }
