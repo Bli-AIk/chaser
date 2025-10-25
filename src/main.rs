@@ -10,6 +10,7 @@ use i18n::{available_locales, init_i18n_with_locale, is_locale_supported, set_lo
 use notify::{
     Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
 };
+use owo_colors::OwoColorize;
 use std::path::Path;
 use std::sync::mpsc::channel;
 
@@ -48,46 +49,46 @@ fn handle_command(command: Commands) -> Result<()> {
             let config_path = Config::config_file_path()?;
             println!(
                 "{}",
-                tf("msg_config_location", &[&config_path.display().to_string()])
+                tf("msg_config_location", &[&config_path.display().to_string().cyan().to_string()])
             );
-            println!("{}", t("msg_config_edit_hint"));
+            println!("{}", t("msg_config_edit_hint").bright_white());
         }
         Commands::Recursive { enabled } => {
             let enabled_bool = match enabled.to_lowercase().as_str() {
                 "true" | "1" | "yes" | "on" => true,
                 "false" | "0" | "no" | "off" => false,
                 _ => {
-                    println!("{}", tf("msg_recursive_invalid", &[&enabled]));
+                    println!("{}", tf("msg_recursive_invalid", &[&enabled]).red());
                     return Ok(());
                 }
             };
             config.recursive = enabled_bool;
-            println!("{}", tf("msg_recursive_set", &[&enabled_bool.to_string()]));
+            println!("{}", tf("msg_recursive_set", &[&enabled_bool.to_string()]).green());
             config.save_with_i18n()?;
         }
         Commands::Ignore { pattern } => {
             if !config.ignore_patterns.contains(&pattern) {
                 config.ignore_patterns.push(pattern.clone());
-                println!("{}", tf("msg_ignore_added", &[&pattern]));
+                println!("{}", tf("msg_ignore_added", &[&pattern]).green());
                 config.save_with_i18n()?;
             } else {
-                println!("{}", tf("msg_ignore_exists", &[&pattern]));
+                println!("{}", tf("msg_ignore_exists", &[&pattern]).yellow());
             }
         }
         Commands::Reset => {
             config = Config::default();
             config.save_with_i18n()?;
-            println!("{}", t("msg_config_reset"));
+            println!("{}", t("msg_config_reset").green());
         }
         Commands::Lang { language } => {
             if is_locale_supported(&language) {
                 config.set_language(Some(language.clone()))?;
                 config.save_with_i18n()?;
                 set_locale(&language);
-                println!("{}", tf("msg_language_set", &[&language]));
+                println!("{}", tf("msg_language_set", &[&language]).green());
             } else {
                 let available = available_locales().join(", ");
-                println!("{}", tf("msg_language_invalid", &[&language, &available]));
+                println!("{}", tf("msg_language_invalid", &[&language, &available]).red());
             }
         }
     }
@@ -101,11 +102,11 @@ fn run_monitor() -> Result<()> {
     // Validate paths
     let invalid_paths = config.validate_paths();
     if !invalid_paths.is_empty() {
-        println!("{}", t("msg_invalid_paths_warning"));
+        println!("{}", t("msg_invalid_paths_warning").yellow());
         for path in &invalid_paths {
-            println!("  - {}", path);
+            println!("  - {}", path.red());
         }
-        println!("{}", t("msg_add_valid_paths_hint"));
+        println!("{}", t("msg_add_valid_paths_hint").bright_white());
     }
 
     let valid_paths: Vec<_> = config
@@ -115,21 +116,21 @@ fn run_monitor() -> Result<()> {
         .collect();
 
     if valid_paths.is_empty() {
-        println!("{}", t("msg_no_valid_paths"));
+        println!("{}", t("msg_no_valid_paths").red());
         return Ok(());
     }
 
-    println!("{}", t("msg_monitoring_start"));
+    println!("{}", t("msg_monitoring_start").bright_green());
     println!(
         "{}",
-        tf("msg_monitoring_paths", &[&valid_paths.len().to_string()])
+        tf("msg_monitoring_paths", &[&valid_paths.len().to_string()]).bright_white()
     );
     for path in &valid_paths {
-        println!("  - {}", path);
+        println!("  - {}", path.cyan());
     }
     println!(
         "{}",
-        tf("msg_monitoring_recursive", &[&config.recursive.to_string()])
+        tf("msg_monitoring_recursive", &[&config.recursive.to_string()]).bright_white()
     );
 
     watch(&config)
@@ -151,11 +152,11 @@ fn watch(config: &Config) -> Result<()> {
     for path in &config.watch_paths {
         if Path::new(path).exists() {
             watcher.watch(Path::new(path), recursive_mode)?;
-            println!("{}", tf("msg_watching_path", &[path]));
+            println!("{}", tf("msg_watching_path", &[path]).bright_green());
         }
     }
 
-    println!("{}", t("msg_monitoring_started"));
+    println!("{}", t("msg_monitoring_started").bright_green().bold());
 
     for res in rx {
         match res {
@@ -165,7 +166,7 @@ fn watch(config: &Config) -> Result<()> {
                 }
                 handle_event(event);
             }
-            Err(e) => println!("{}", tf("msg_monitoring_error", &[&format!("{:?}", e)])),
+            Err(e) => println!("{}", tf("msg_monitoring_error", &[&format!("{:?}", e)]).red()),
         }
     }
 
@@ -202,7 +203,7 @@ fn handle_event(event: Event) {
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
-                println!("{}", tf("msg_file_created", &[&path.display().to_string()]));
+                println!("{}", tf("msg_file_created", &[&path.display().to_string().cyan().to_string()]).green());
             }
         }
         EventKind::Modify(modify_kind) => {
@@ -212,14 +213,14 @@ fn handle_event(event: Event) {
                         notify::event::RenameMode::Both => {
                             // This is the actual rename event with both old and new paths
                             if event.paths.len() >= 2 {
-                                println!("{}", t("msg_file_renamed"));
+                                println!("{}", t("msg_file_renamed").yellow());
                                 println!(
                                     "{}",
-                                    tf("msg_rename_from", &[&event.paths[0].display().to_string()])
+                                    tf("msg_rename_from", &[&event.paths[0].display().to_string().cyan().to_string()])
                                 );
                                 println!(
                                     "{}",
-                                    tf("msg_rename_to", &[&event.paths[1].display().to_string()])
+                                    tf("msg_rename_to", &[&event.paths[1].display().to_string().cyan().to_string()])
                                 );
                             }
                         }
@@ -229,8 +230,8 @@ fn handle_event(event: Event) {
                                 "{}",
                                 tf(
                                     "msg_rename_started",
-                                    &[&event.paths[0].display().to_string()]
-                                )
+                                    &[&event.paths[0].display().to_string().cyan().to_string()]
+                                ).yellow()
                             );
                         }
                         notify::event::RenameMode::To => {
@@ -239,15 +240,15 @@ fn handle_event(event: Event) {
                                 "{}",
                                 tf(
                                     "msg_rename_completed",
-                                    &[&event.paths[0].display().to_string()]
-                                )
+                                    &[&event.paths[0].display().to_string().cyan().to_string()]
+                                ).yellow()
                             );
                         }
                         _ => {
                             for path in &event.paths {
                                 println!(
                                     "{}",
-                                    tf("msg_name_modified", &[&path.display().to_string()])
+                                    tf("msg_name_modified", &[&path.display().to_string().cyan().to_string()]).yellow()
                                 );
                             }
                         }
@@ -257,7 +258,7 @@ fn handle_event(event: Event) {
                     for path in &event.paths {
                         println!(
                             "{}",
-                            tf("msg_file_content_modified", &[&path.display().to_string()])
+                            tf("msg_file_content_modified", &[&path.display().to_string().cyan().to_string()]).blue()
                         );
                     }
                 }
@@ -268,7 +269,7 @@ fn handle_event(event: Event) {
                     for path in &event.paths {
                         println!(
                             "{}",
-                            tf("msg_file_modified", &[&path.display().to_string()])
+                            tf("msg_file_modified", &[&path.display().to_string().cyan().to_string()]).blue()
                         );
                     }
                 }
@@ -276,7 +277,7 @@ fn handle_event(event: Event) {
         }
         EventKind::Remove(_) => {
             for path in &event.paths {
-                println!("{}", tf("msg_file_deleted", &[&path.display().to_string()]));
+                println!("{}", tf("msg_file_deleted", &[&path.display().to_string().cyan().to_string()]).red());
             }
         }
         EventKind::Access(_) => {}

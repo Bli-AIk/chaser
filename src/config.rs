@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -53,12 +54,12 @@ impl Config {
                 serde_yaml::from_str(&content).context("Failed to parse config file")?;
 
             // Don't use i18n here as it might not be initialized yet
-            eprintln!("✓ Loaded config from: {}", config_path.display());
+            eprintln!("{} {}", "✓".green(), format!("Loaded config from: {}", config_path.display()).bright_white());
             Ok(config)
         } else {
             let default_config = Self::default();
             default_config.save()?;
-            eprintln!("✓ Created default config at: {}", config_path.display());
+            eprintln!("{} {}", "✓".green(), format!("Created default config at: {}", config_path.display()).bright_white());
             Ok(default_config)
         }
     }
@@ -72,7 +73,7 @@ impl Config {
         fs::write(&config_path, content).context("Failed to write config file")?;
 
         // Use eprintln to avoid i18n dependency during early initialization
-        eprintln!("✓ Config saved to: {}", config_path.display());
+        eprintln!("{} {}", "✓".green(), format!("Config saved to: {}", config_path.display()).bright_white());
         Ok(())
     }
 
@@ -80,9 +81,9 @@ impl Config {
     pub fn add_path(&mut self, path: String) -> Result<()> {
         if !self.watch_paths.contains(&path) {
             self.watch_paths.push(path.clone());
-            println!("{}", crate::i18n::tf("msg_path_added", &[&path]));
+            println!("{}", crate::i18n::tf("msg_path_added", &[&path]).green());
         } else {
-            println!("{}", crate::i18n::tf("msg_path_exists", &[&path]));
+            println!("{}", crate::i18n::tf("msg_path_exists", &[&path]).yellow());
         }
         Ok(())
     }
@@ -91,31 +92,35 @@ impl Config {
     pub fn remove_path(&mut self, path: &str) -> Result<()> {
         if let Some(pos) = self.watch_paths.iter().position(|p| p == path) {
             self.watch_paths.remove(pos);
-            println!("{}", crate::i18n::tf("msg_path_removed", &[path]));
+            println!("{}", crate::i18n::tf("msg_path_removed", &[path]).green());
         } else {
-            println!("{}", crate::i18n::tf("msg_path_not_found", &[path]));
+            println!("{}", crate::i18n::tf("msg_path_not_found", &[path]).red());
         }
         Ok(())
     }
 
     /// List all watch paths
     pub fn list_paths(&self) {
-        println!("{}", crate::i18n::t("ui_watch_paths"));
+        println!("{}", crate::i18n::t("ui_watch_paths").bright_cyan().bold());
         for (i, path) in self.watch_paths.iter().enumerate() {
-            println!("  {}. {}", i + 1, path);
+            println!("  {}. {}", format!("{}", i + 1).bright_white(), path.cyan());
         }
 
-        println!("\n{}", crate::i18n::t("ui_settings"));
+        println!("\n{}", crate::i18n::t("ui_settings").bright_cyan().bold());
         println!(
             "  {}",
-            crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()])
+            crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()]).bright_white()
         );
-        println!("  Ignore patterns: {:?}", self.ignore_patterns);
+        println!("  {}: [{}]", "Ignore patterns".bright_white(), 
+                 self.ignore_patterns.iter()
+                     .map(|p| p.yellow().to_string())
+                     .collect::<Vec<_>>()
+                     .join(", "));
 
         if let Some(ref lang) = self.language {
-            println!("  Language: {}", lang);
+            println!("  {}: {}", "Language".bright_white(), lang.green());
         } else {
-            println!("  Language: {} (auto)", self.get_effective_language());
+            println!("  {}: {} {}", "Language".bright_white(), self.get_effective_language().green(), "(auto)".dimmed());
         }
     }
 
@@ -131,7 +136,7 @@ impl Config {
 
             println!(
                 "{}",
-                crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string()])
+                crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string().cyan().to_string()]).green()
             );
             Ok(config)
         } else {
@@ -139,7 +144,7 @@ impl Config {
             default_config.save_with_i18n()?;
             println!(
                 "{}",
-                crate::i18n::tf("msg_config_created", &[&config_path.display().to_string()])
+                crate::i18n::tf("msg_config_created", &[&config_path.display().to_string().cyan().to_string()]).green()
             );
             Ok(default_config)
         }
@@ -155,7 +160,7 @@ impl Config {
 
         println!(
             "{}",
-            crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string()])
+            crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string().cyan().to_string()]).green()
         );
         Ok(())
     }
