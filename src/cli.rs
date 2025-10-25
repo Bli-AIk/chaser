@@ -44,6 +44,26 @@ pub enum Commands {
         #[arg(action = clap::ArgAction::Set)]
         language: String,
     },
+    /// Add a target file for path synchronization
+    AddTarget {
+        /// Target file path (json, yaml, toml, csv)
+        file: String,
+    },
+    /// Remove a target file
+    RemoveTarget {
+        /// Target file path to remove
+        file: String,
+    },
+    /// List all target files
+    ListTargets,
+    /// Show path synchronization status
+    Status,
+    /// Start path synchronization monitoring
+    Sync {
+        /// Perform one-time sync without monitoring
+        #[arg(long)]
+        once: bool,
+    },
 }
 
 #[cfg(test)]

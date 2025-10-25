@@ -1,6 +1,8 @@
 mod cli;
 mod config;
 mod i18n;
+mod path_sync;
+mod target_files;
 
 use anyhow::Result;
 use chaser::should_ignore_event;
@@ -12,6 +14,7 @@ use notify::{
     Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
 };
 use owo_colors::OwoColorize;
+use path_sync::PathSyncManager;
 use std::path::Path;
 use std::sync::mpsc::channel;
 
@@ -100,6 +103,33 @@ fn handle_command(command: Commands) -> Result<()> {
                     tf("msg_language_invalid", &[&language, &available]).red()
                 );
             }
+        }
+        Commands::AddTarget { file } => {
+            config.add_target_file(file.clone())?;
+            config.save_with_i18n()?;
+            println!("{}", tf("msg_target_added", &[&file]).green());
+        }
+        Commands::RemoveTarget { file } => {
+            config.remove_target_file(&file)?;
+            config.save_with_i18n()?;
+            println!("{}", tf("msg_target_removed", &[&file]).green());
+        }
+        Commands::ListTargets => {
+            let target_files = config.list_target_files();
+            if target_files.is_empty() {
+                println!("{}", t("msg_no_targets").yellow());
+            } else {
+                println!("{}", t("msg_target_files"));
+                for file in target_files {
+                    println!("  - {}", file.bright_white());
+                }
+            }
+        }
+        Commands::Status => {
+            show_sync_status(&config)?;
+        }
+        Commands::Sync { once } => {
+            run_path_sync(&config, once)?;
         }
     }
 
@@ -304,4 +334,48 @@ fn handle_event(event: Event) {
         EventKind::Access(_) => {}
         EventKind::Any | EventKind::Other => {}
     }
+}
+
+fn show_sync_status(config: &Config) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!("{}", t("msg_sync_status_header").bright_blue());
+    println!("{}", "─".repeat(50).bright_black());
+
+    if config.target_files.is_empty() {
+        println!("{}", t("msg_no_targets_configured").yellow());
+        return Ok(());
+    }
+
+    let manager = PathSyncManager::new(config.target_files.clone())?;
+    manager.print_status();
+
+    Ok(())
+}
+
+fn run_path_sync(config: &Config, once: bool) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!("{}", t("msg_starting_sync").bright_green());
+
+    let mut manager = PathSyncManager::new(config.target_files.clone())?;
+
+    if once {
+        println!("{}", t("msg_sync_once_mode").bright_blue());
+        manager.refresh()?;
+        manager.print_status();
+    } else {
+        manager.start_monitoring()?;
+        manager.print_status();
+
+        println!("\n{}", t("msg_sync_monitoring").bright_green());
+        println!("{}", t("msg_press_ctrl_c").bright_white());
+
+        // Keep the program running
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    }
+
+    Ok(())
 }

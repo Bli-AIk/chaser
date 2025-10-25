@@ -1,7 +1,8 @@
-
 pub mod cli;
 pub mod config;
 pub mod i18n;
+pub mod path_sync;
+pub mod target_files;
 
 use notify::{Event, EventKind};
 
@@ -9,9 +10,9 @@ use notify::{Event, EventKind};
 pub fn should_ignore_event(event: &Event, ignore_patterns: &[String]) -> bool {
     event.paths.iter().any(|path| {
         let path_str = path.to_string_lossy();
-        ignore_patterns.iter().any(|pattern| {
-            matches_ignore_pattern(&path_str, pattern)
-        })
+        ignore_patterns
+            .iter()
+            .any(|pattern| matches_ignore_pattern(&path_str, pattern))
     })
 }
 
