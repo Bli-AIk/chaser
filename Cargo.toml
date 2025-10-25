@@ -6,6 +6,14 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/Bli-AIk/chaser"
 description = "An automated file path synchronization tool that updates changed paths in configuration files in real time."
 
+[[bin]]
+name = "chaser"
+path = "src/main.rs"
+
+[lib]
+name = "chaser"
+path = "src/lib.rs"
+
 [dependencies]
 notify = "8.2.0"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -16,3 +24,7 @@ dirs = "6.0"
 anyhow = "1.0"
 sys-locale = "0.3"
 owo-colors = "4.0"
+
+[dev-dependencies]
+tempfile = "3.8"
+serial_test = "3.0"
