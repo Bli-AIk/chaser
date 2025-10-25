@@ -121,8 +121,10 @@ impl I18n {
 
     fn parse_locale(locale_str: &str) -> Option<String> {
         let locale_lower = locale_str.to_lowercase();
-        
-        if locale_lower.starts_with("zh") && (locale_lower.contains("cn") || locale_lower.contains("hans")) {
+
+        if locale_lower.starts_with("zh")
+            && (locale_lower.contains("cn") || locale_lower.contains("hans"))
+        {
             Some("zh-cn".to_string())
         } else if locale_lower.starts_with("en") {
             Some("en".to_string())
@@ -516,10 +518,10 @@ greeting: "你好"
         let original_dir = env::current_dir().unwrap();
         if env::set_current_dir(temp_dir.path()).is_ok() {
             let result = init_i18n_with_locale("en");
-            
+
             // Restore original directory
             let _ = env::set_current_dir(original_dir);
-            
+
             if result.is_ok() {
                 // If successful, test that global functions work
                 let message = t("test_key");

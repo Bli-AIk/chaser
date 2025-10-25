@@ -1,0 +1,4 @@
+path,type
+./test_files,directory
+./src,directory
+/tmp/example,directory

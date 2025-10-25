@@ -69,3 +69,17 @@ ui_watch_paths: "Watch paths:"
 ui_settings: "Settings:"
 ui_recursive: "Recursive: {0}"
 ui_ignore_patterns: "Ignore patterns: {0}"
+
+# Messages - Target files
+msg_target_added: "Added target file: {0}"
+msg_target_removed: "Removed target file: {0}"
+msg_target_files: "Target files:"
+msg_no_targets: "No target files configured"
+msg_no_targets_configured: "No target files configured. Use 'chaser add-target <file>' to add one."
+
+# Messages - Path synchronization
+msg_sync_status_header: "Path Synchronization Status"
+msg_starting_sync: "Starting path synchronization..."
+msg_sync_once_mode: "Running in one-time sync mode"
+msg_sync_monitoring: "Path synchronization monitoring active"
+msg_press_ctrl_c: "Press Ctrl+C to stop monitoring"

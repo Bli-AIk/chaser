@@ -69,3 +69,17 @@ ui_watch_paths: "监控路径："
 ui_settings: "设置："
 ui_recursive: "递归：{0}"
 ui_ignore_patterns: "忽略模式：{0}"
+
+# 消息 - 目标文件
+msg_target_added: "已添加目标文件：{0}"
+msg_target_removed: "已移除目标文件：{0}"
+msg_target_files: "目标文件："
+msg_no_targets: "未配置目标文件"
+msg_no_targets_configured: "未配置目标文件。使用 'chaser add-target <file>' 添加一个。"
+
+# 消息 - 路径同步
+msg_sync_status_header: "路径同步状态"
+msg_starting_sync: "开始路径同步..."
+msg_sync_once_mode: "运行在一次性同步模式"
+msg_sync_monitoring: "路径同步监控已激活"
+msg_press_ctrl_c: "按 Ctrl+C 停止监控"

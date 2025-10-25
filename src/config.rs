@@ -10,6 +10,8 @@ pub struct Config {
     pub recursive: bool,
     pub ignore_patterns: Vec<String>,
     pub language: Option<String>,
+    #[serde(default)]
+    pub target_files: Vec<String>,
 }
 
 impl Default for Config {
@@ -24,6 +26,7 @@ impl Default for Config {
                 "target/**".to_string(),
             ],
             language: None,
+            target_files: vec!["paths.json".to_string()],
         }
     }
 }
@@ -234,6 +237,33 @@ impl Config {
         }
 
         invalid_paths
+    }
+
+    /// Add a target file
+    pub fn add_target_file(&mut self, target_file: String) -> Result<()> {
+        if !self.target_files.contains(&target_file) {
+            self.target_files.push(target_file);
+        }
+        Ok(())
+    }
+
+    /// Remove a target file
+    pub fn remove_target_file(&mut self, target_file: &str) -> Result<()> {
+        self.target_files.retain(|p| p != target_file);
+        Ok(())
+    }
+
+    /// List all target files
+    pub fn list_target_files(&self) -> &Vec<String> {
+        &self.target_files
+    }
+
+    /// Validate target files have at least one entry
+    pub fn validate_target_files(&self) -> Result<()> {
+        if self.target_files.is_empty() {
+            anyhow::bail!("At least one target file must be configured");
+        }
+        Ok(())
     }
 }
 
