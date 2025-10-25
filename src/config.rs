@@ -51,7 +51,7 @@ impl Config {
             let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
 
             let config: Config =
-                serde_yaml::from_str(&content).context("Failed to parse config file")?;
+                serde_yaml_ng::from_str(&content).context("Failed to parse config file")?;
 
             // Don't use i18n here as it might not be initialized yet
             eprintln!("{} {}", "✓".green(), format!("Loaded config from: {}", config_path.display()).bright_white());
@@ -68,7 +68,7 @@ impl Config {
     pub fn save(&self) -> Result<()> {
         let config_path = Self::config_file_path()?;
 
-        let content = serde_yaml::to_string(self).context("Failed to serialize config")?;
+        let content = serde_yaml_ng::to_string(self).context("Failed to serialize config")?;
 
         fs::write(&config_path, content).context("Failed to write config file")?;
 
@@ -132,7 +132,7 @@ impl Config {
             let content = fs::read_to_string(&config_path).context("Failed to read config file")?;
 
             let config: Config =
-                serde_yaml::from_str(&content).context("Failed to parse config file")?;
+                serde_yaml_ng::from_str(&content).context("Failed to parse config file")?;
 
             println!(
                 "{}",
@@ -154,7 +154,7 @@ impl Config {
     pub fn save_with_i18n(&self) -> Result<()> {
         let config_path = Self::config_file_path()?;
 
-        let content = serde_yaml::to_string(self).context("Failed to serialize config")?;
+        let content = serde_yaml_ng::to_string(self).context("Failed to serialize config")?;
 
         fs::write(&config_path, content).context("Failed to write config file")?;
 
