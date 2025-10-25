@@ -54,7 +54,7 @@ impl I18n {
                         format!("Failed to read locale file: {}", path.display())
                     })?;
 
-                    let strings: HashMap<String, String> = serde_yaml::from_str(&content)
+                    let strings: HashMap<String, String> = serde_yaml_ng::from_str(&content)
                         .with_context(|| {
                             format!("Failed to parse locale file: {}", path.display())
                         })?;
