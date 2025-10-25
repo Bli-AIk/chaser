@@ -3,6 +3,7 @@ mod config;
 mod i18n;
 
 use anyhow::Result;
+use chaser::should_ignore_event;
 use clap::Parser;
 use cli::{Cli, Commands};
 use config::Config;
@@ -49,7 +50,10 @@ fn handle_command(command: Commands) -> Result<()> {
             let config_path = Config::config_file_path()?;
             println!(
                 "{}",
-                tf("msg_config_location", &[&config_path.display().to_string().cyan().to_string()])
+                tf(
+                    "msg_config_location",
+                    &[&config_path.display().to_string().cyan().to_string()]
+                )
             );
             println!("{}", t("msg_config_edit_hint").bright_white());
         }
@@ -63,7 +67,10 @@ fn handle_command(command: Commands) -> Result<()> {
                 }
             };
             config.recursive = enabled_bool;
-            println!("{}", tf("msg_recursive_set", &[&enabled_bool.to_string()]).green());
+            println!(
+                "{}",
+                tf("msg_recursive_set", &[&enabled_bool.to_string()]).green()
+            );
             config.save_with_i18n()?;
         }
         Commands::Ignore { pattern } => {
@@ -88,7 +95,10 @@ fn handle_command(command: Commands) -> Result<()> {
                 println!("{}", tf("msg_language_set", &[&language]).green());
             } else {
                 let available = available_locales().join(", ");
-                println!("{}", tf("msg_language_invalid", &[&language, &available]).red());
+                println!(
+                    "{}",
+                    tf("msg_language_invalid", &[&language, &available]).red()
+                );
             }
         }
     }
@@ -166,44 +176,28 @@ fn watch(config: &Config) -> Result<()> {
                 }
                 handle_event(event);
             }
-            Err(e) => println!("{}", tf("msg_monitoring_error", &[&format!("{:?}", e)]).red()),
+            Err(e) => println!(
+                "{}",
+                tf("msg_monitoring_error", &[&format!("{:?}", e)]).red()
+            ),
         }
     }
 
     Ok(())
 }
 
-fn should_ignore_event(event: &Event, ignore_patterns: &[String]) -> bool {
-    for path in &event.paths {
-        let path_str = path.to_string_lossy();
-
-        for pattern in ignore_patterns {
-            // Simple pattern matching - you could use a more sophisticated glob library
-            if pattern.contains("**") {
-                // Handle directory patterns like ".git/**"
-                let dir_pattern = pattern.replace("/**", "");
-                if path_str.contains(&dir_pattern) {
-                    return true;
-                }
-            } else if pattern.starts_with("*.") {
-                // Handle file extension patterns like "*.tmp"
-                let ext = pattern.strip_prefix("*.").unwrap();
-                if path_str.ends_with(ext) {
-                    return true;
-                }
-            } else if path_str.contains(pattern) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 fn handle_event(event: Event) {
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
-                println!("{}", tf("msg_file_created", &[&path.display().to_string().cyan().to_string()]).green());
+                println!(
+                    "{}",
+                    tf(
+                        "msg_file_created",
+                        &[&path.display().to_string().cyan().to_string()]
+                    )
+                    .green()
+                );
             }
         }
         EventKind::Modify(modify_kind) => {
@@ -216,11 +210,17 @@ fn handle_event(event: Event) {
                                 println!("{}", t("msg_file_renamed").yellow());
                                 println!(
                                     "{}",
-                                    tf("msg_rename_from", &[&event.paths[0].display().to_string().cyan().to_string()])
+                                    tf(
+                                        "msg_rename_from",
+                                        &[&event.paths[0].display().to_string().cyan().to_string()]
+                                    )
                                 );
                                 println!(
                                     "{}",
-                                    tf("msg_rename_to", &[&event.paths[1].display().to_string().cyan().to_string()])
+                                    tf(
+                                        "msg_rename_to",
+                                        &[&event.paths[1].display().to_string().cyan().to_string()]
+                                    )
                                 );
                             }
                         }
@@ -231,7 +231,8 @@ fn handle_event(event: Event) {
                                 tf(
                                     "msg_rename_started",
                                     &[&event.paths[0].display().to_string().cyan().to_string()]
-                                ).yellow()
+                                )
+                                .yellow()
                             );
                         }
                         notify::event::RenameMode::To => {
@@ -241,14 +242,19 @@ fn handle_event(event: Event) {
                                 tf(
                                     "msg_rename_completed",
                                     &[&event.paths[0].display().to_string().cyan().to_string()]
-                                ).yellow()
+                                )
+                                .yellow()
                             );
                         }
                         _ => {
                             for path in &event.paths {
                                 println!(
                                     "{}",
-                                    tf("msg_name_modified", &[&path.display().to_string().cyan().to_string()]).yellow()
+                                    tf(
+                                        "msg_name_modified",
+                                        &[&path.display().to_string().cyan().to_string()]
+                                    )
+                                    .yellow()
                                 );
                             }
                         }
@@ -258,7 +264,11 @@ fn handle_event(event: Event) {
                     for path in &event.paths {
                         println!(
                             "{}",
-                            tf("msg_file_content_modified", &[&path.display().to_string().cyan().to_string()]).blue()
+                            tf(
+                                "msg_file_content_modified",
+                                &[&path.display().to_string().cyan().to_string()]
+                            )
+                            .blue()
                         );
                     }
                 }
@@ -269,7 +279,11 @@ fn handle_event(event: Event) {
                     for path in &event.paths {
                         println!(
                             "{}",
-                            tf("msg_file_modified", &[&path.display().to_string().cyan().to_string()]).blue()
+                            tf(
+                                "msg_file_modified",
+                                &[&path.display().to_string().cyan().to_string()]
+                            )
+                            .blue()
                         );
                     }
                 }
@@ -277,7 +291,14 @@ fn handle_event(event: Event) {
         }
         EventKind::Remove(_) => {
             for path in &event.paths {
-                println!("{}", tf("msg_file_deleted", &[&path.display().to_string().cyan().to_string()]).red());
+                println!(
+                    "{}",
+                    tf(
+                        "msg_file_deleted",
+                        &[&path.display().to_string().cyan().to_string()]
+                    )
+                    .red()
+                );
             }
         }
         EventKind::Access(_) => {}

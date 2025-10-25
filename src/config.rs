@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Config {
     pub watch_paths: Vec<String>,
     pub recursive: bool,
@@ -23,7 +23,7 @@ impl Default for Config {
                 ".git/**".to_string(),
                 "target/**".to_string(),
             ],
-            language: None, // Use system locale by default
+            language: None,
         }
     }
 }
@@ -32,15 +32,17 @@ impl Config {
     /// Get the config file path (cross-platform)
     pub fn config_file_path() -> Result<PathBuf> {
         let config_dir = dirs::config_dir().context("Failed to get config directory")?;
-
         let app_config_dir = config_dir.join("chaser");
 
-        // Create config directory if it doesn't exist
-        if !app_config_dir.exists() {
-            fs::create_dir_all(&app_config_dir).context("Failed to create config directory")?;
-        }
-
+        Self::ensure_config_dir_exists(&app_config_dir)?;
         Ok(app_config_dir.join("config.yaml"))
+    }
+
+    fn ensure_config_dir_exists(dir: &Path) -> Result<()> {
+        if !dir.exists() {
+            fs::create_dir_all(dir).context("Failed to create config directory")?;
+        }
+        Ok(())
     }
 
     /// Load config from file, create default if not exists
@@ -53,13 +55,20 @@ impl Config {
             let config: Config =
                 serde_yaml_ng::from_str(&content).context("Failed to parse config file")?;
 
-            // Don't use i18n here as it might not be initialized yet
-            eprintln!("{} {}", "✓".green(), format!("Loaded config from: {}", config_path.display()).bright_white());
+            eprintln!(
+                "{} {}",
+                "✓".green(),
+                format!("Loaded config from: {}", config_path.display()).bright_white()
+            );
             Ok(config)
         } else {
             let default_config = Self::default();
             default_config.save()?;
-            eprintln!("{} {}", "✓".green(), format!("Created default config at: {}", config_path.display()).bright_white());
+            eprintln!(
+                "{} {}",
+                "✓".green(),
+                format!("Created default config at: {}", config_path.display()).bright_white()
+            );
             Ok(default_config)
         }
     }
@@ -72,8 +81,11 @@ impl Config {
 
         fs::write(&config_path, content).context("Failed to write config file")?;
 
-        // Use eprintln to avoid i18n dependency during early initialization
-        eprintln!("{} {}", "✓".green(), format!("Config saved to: {}", config_path.display()).bright_white());
+        eprintln!(
+            "{} {}",
+            "✓".green(),
+            format!("Config saved to: {}", config_path.display()).bright_white()
+        );
         Ok(())
     }
 
@@ -111,16 +123,25 @@ impl Config {
             "  {}",
             crate::i18n::tf("ui_recursive", &[&self.recursive.to_string()]).bright_white()
         );
-        println!("  {}: [{}]", "Ignore patterns".bright_white(), 
-                 self.ignore_patterns.iter()
-                     .map(|p| p.yellow().to_string())
-                     .collect::<Vec<_>>()
-                     .join(", "));
+        println!(
+            "  {}: [{}]",
+            "Ignore patterns".bright_white(),
+            self.ignore_patterns
+                .iter()
+                .map(|p| p.yellow().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
 
         if let Some(ref lang) = self.language {
             println!("  {}: {}", "Language".bright_white(), lang.green());
         } else {
-            println!("  {}: {} {}", "Language".bright_white(), self.get_effective_language().green(), "(auto)".dimmed());
+            println!(
+                "  {}: {} {}",
+                "Language".bright_white(),
+                self.get_effective_language().green(),
+                "(auto)".dimmed()
+            );
         }
     }
 
@@ -136,7 +157,11 @@ impl Config {
 
             println!(
                 "{}",
-                crate::i18n::tf("msg_config_loaded", &[&config_path.display().to_string().cyan().to_string()]).green()
+                crate::i18n::tf(
+                    "msg_config_loaded",
+                    &[&config_path.display().to_string().cyan().to_string()]
+                )
+                .green()
             );
             Ok(config)
         } else {
@@ -144,7 +169,11 @@ impl Config {
             default_config.save_with_i18n()?;
             println!(
                 "{}",
-                crate::i18n::tf("msg_config_created", &[&config_path.display().to_string().cyan().to_string()]).green()
+                crate::i18n::tf(
+                    "msg_config_created",
+                    &[&config_path.display().to_string().cyan().to_string()]
+                )
+                .green()
             );
             Ok(default_config)
         }
@@ -160,7 +189,11 @@ impl Config {
 
         println!(
             "{}",
-            crate::i18n::tf("msg_config_saved", &[&config_path.display().to_string().cyan().to_string()]).green()
+            crate::i18n::tf(
+                "msg_config_saved",
+                &[&config_path.display().to_string().cyan().to_string()]
+            )
+            .green()
         );
         Ok(())
     }
@@ -201,5 +234,222 @@ impl Config {
         }
 
         invalid_paths
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::env;
+    use tempfile::TempDir;
+
+    fn create_test_config_with_temp_dir() -> (Config, TempDir) {
+        let temp_dir = TempDir::new().unwrap();
+        let config_dir = temp_dir.path().join("chaser");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let mut config = Config::default();
+        config.watch_paths = vec![temp_dir.path().to_string_lossy().to_string()];
+
+        (config, temp_dir)
+    }
+
+    #[test]
+    fn test_config_default() {
+        let config = Config::default();
+        assert_eq!(config.watch_paths, vec!["./test_files"]);
+        assert_eq!(config.recursive, true);
+        assert_eq!(
+            config.ignore_patterns,
+            vec!["*.tmp", "*.log", ".git/**", "target/**"]
+        );
+        assert_eq!(config.language, None);
+    }
+
+    #[test]
+    fn test_config_serialization() {
+        let config = Config::default();
+        let yaml_str = serde_yaml_ng::to_string(&config).unwrap();
+        assert!(yaml_str.contains("watch_paths"));
+        assert!(yaml_str.contains("recursive"));
+        assert!(yaml_str.contains("ignore_patterns"));
+
+        let deserialized: Config = serde_yaml_ng::from_str(&yaml_str).unwrap();
+        assert_eq!(config, deserialized);
+    }
+
+    #[test]
+    #[serial]
+    fn test_config_file_path() {
+        // Test config file path generation
+        let result = Config::config_file_path();
+        assert!(result.is_ok());
+
+        let path = result.unwrap();
+        assert!(path.to_string_lossy().contains("chaser"));
+        assert!(path.file_name().unwrap() == "config.yaml");
+    }
+
+    #[test]
+    fn test_add_path() {
+        let mut config = Config::default();
+        let initial_count = config.watch_paths.len();
+
+        // Test adding new path
+        let result = config.add_path("./new_path".to_string());
+        assert!(result.is_ok());
+        assert_eq!(config.watch_paths.len(), initial_count + 1);
+        assert!(config.watch_paths.contains(&"./new_path".to_string()));
+
+        // Test adding duplicate path (should not increase count)
+        let result = config.add_path("./new_path".to_string());
+        assert!(result.is_ok());
+        assert_eq!(config.watch_paths.len(), initial_count + 1);
+    }
+
+    #[test]
+    fn test_remove_path() {
+        let mut config = Config::default();
+        config.watch_paths.push("./removable_path".to_string());
+        let initial_count = config.watch_paths.len();
+
+        // Test removing existing path
+        let result = config.remove_path("./removable_path");
+        assert!(result.is_ok());
+        assert_eq!(config.watch_paths.len(), initial_count - 1);
+        assert!(!config.watch_paths.contains(&"./removable_path".to_string()));
+
+        // Test removing non-existent path
+        let result = config.remove_path("./non_existent_path");
+        assert!(result.is_ok());
+        assert_eq!(config.watch_paths.len(), initial_count - 1);
+    }
+
+    #[test]
+    fn test_set_language() {
+        let mut config = Config::default();
+
+        // Test setting language
+        let result = config.set_language(Some("en".to_string()));
+        assert!(result.is_ok());
+        assert_eq!(config.language, Some("en".to_string()));
+
+        // Test setting None
+        let result = config.set_language(None);
+        assert!(result.is_ok());
+        assert_eq!(config.language, None);
+    }
+
+    #[test]
+    fn test_get_effective_language() {
+        let mut config = Config::default();
+
+        // Test with no language set (should return system locale or default)
+        let effective = config.get_effective_language();
+        assert!(effective == "en" || effective == "zh-cn");
+
+        // Test with language set
+        config.language = Some("zh-cn".to_string());
+        assert_eq!(config.get_effective_language(), "zh-cn");
+
+        config.language = Some("en".to_string());
+        assert_eq!(config.get_effective_language(), "en");
+    }
+
+    #[test]
+    fn test_get_effective_language_with_env() {
+        let config = Config::default();
+
+        // Test with LANG environment variable
+        unsafe {
+            env::set_var("LANG", "zh_CN.UTF-8");
+        }
+        assert_eq!(config.get_effective_language(), "zh-cn");
+
+        unsafe {
+            env::set_var("LANG", "en_US.UTF-8");
+        }
+        assert_eq!(config.get_effective_language(), "en");
+
+        unsafe {
+            env::set_var("LANG", "fr_FR.UTF-8");
+        }
+        assert_eq!(config.get_effective_language(), "en");
+
+        // Clean up
+        unsafe {
+            env::remove_var("LANG");
+        }
+    }
+
+    #[test]
+    fn test_validate_paths() {
+        let (mut config, temp_dir) = create_test_config_with_temp_dir();
+
+        // Add some paths - one valid, one invalid
+        let valid_path = temp_dir.path().to_string_lossy().to_string();
+        let invalid_path = "/definitely/does/not/exist".to_string();
+
+        config.watch_paths = vec![valid_path.clone(), invalid_path.clone()];
+
+        let invalid_paths = config.validate_paths();
+        assert_eq!(invalid_paths.len(), 1);
+        assert_eq!(invalid_paths[0], invalid_path);
+
+        // Test with all valid paths
+        config.watch_paths = vec![valid_path];
+        let invalid_paths = config.validate_paths();
+        assert_eq!(invalid_paths.len(), 0);
+
+        // Test with all invalid paths
+        config.watch_paths = vec!["/invalid1".to_string(), "/invalid2".to_string()];
+        let invalid_paths = config.validate_paths();
+        assert_eq!(invalid_paths.len(), 2);
+    }
+
+    #[test]
+    #[serial] // Serialize because we're dealing with config files
+    fn test_save_and_load() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("config.yaml");
+
+        // Create a test config
+        let mut original_config = Config::default();
+        original_config.watch_paths = vec!["./test1".to_string(), "./test2".to_string()];
+        original_config.recursive = false;
+        original_config.ignore_patterns = vec!["*.test".to_string()];
+        original_config.language = Some("zh-cn".to_string());
+
+        // Save config
+        let yaml_content = serde_yaml_ng::to_string(&original_config).unwrap();
+        fs::write(&config_path, yaml_content).unwrap();
+
+        // Load config
+        let content = fs::read_to_string(&config_path).unwrap();
+        let loaded_config: Config = serde_yaml_ng::from_str(&content).unwrap();
+
+        assert_eq!(original_config, loaded_config);
+    }
+
+    #[test]
+    fn test_config_clone() {
+        let config1 = Config::default();
+        let config2 = config1.clone();
+        assert_eq!(config1, config2);
+
+        // Modify one and ensure they're different
+        let mut config3 = config1.clone();
+        config3.recursive = false;
+        assert_ne!(config1, config3);
+    }
+
+    #[test]
+    fn test_config_debug() {
+        let config = Config::default();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("Config"));
+        assert!(debug_str.contains("watch_paths"));
+        assert!(debug_str.contains("recursive"));
     }
 }

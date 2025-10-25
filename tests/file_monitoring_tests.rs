@@ -126,12 +126,14 @@ fn test_event_types() {
 fn test_multiple_paths_in_event() {
     let ignore_patterns = vec!["*.tmp".to_string()];
 
+    
     let event = create_test_event(
         vec!["/file1.txt", "/file2.txt", "/file3.txt"],
         EventKind::Create(CreateKind::File),
     );
     assert!(!should_ignore_event(&event, &ignore_patterns));
 
+    
     let event = create_test_event(
         vec!["/file1.txt", "/temp.tmp", "/file3.txt"],
         EventKind::Create(CreateKind::File),
@@ -141,6 +143,8 @@ fn test_multiple_paths_in_event() {
 
 #[test]
 fn test_real_world_scenarios() {
+    
+
     let rust_ignore_patterns = vec![
         "target/**".to_string(),
         "*.lock".to_string(),
@@ -190,6 +194,7 @@ fn test_real_world_scenarios() {
 
 #[test]
 fn test_case_sensitivity() {
+    
     let ignore_patterns = vec![
         "*.LOG".to_string(),
         "*.Tmp".to_string(),
@@ -197,12 +202,12 @@ fn test_case_sensitivity() {
     ];
 
     let test_cases = vec![
-        ("/file.LOG", true),
-        ("/file.log", false),
-        ("/file.Tmp", true),
-        ("/file.tmp", false),
-        ("/BUILD/file", true),
-        ("/build/file", false),
+        ("/file.LOG", true),    
+        ("/file.log", false),   
+        ("/file.Tmp", true),    
+        ("/file.tmp", false),   
+        ("/BUILD/file", true),  
+        ("/build/file", false), 
     ];
 
     for (path, should_ignore) in test_cases {
@@ -214,6 +219,7 @@ fn test_case_sensitivity() {
 
 #[test]
 fn test_unicode_paths() {
+    
     let ignore_patterns = vec![
         "*.临时".to_string(),
         "测试/**".to_string(),
@@ -237,13 +243,16 @@ fn test_unicode_paths() {
 
 #[test]
 fn test_performance_with_many_patterns() {
+    
     let mut ignore_patterns = Vec::new();
 
+    
     for i in 0..1000 {
         ignore_patterns.push(format!("*.tmp{}", i));
         ignore_patterns.push(format!("cache{}/**", i));
     }
 
+    
     let event = create_test_event(
         vec!["/project/src/main.rs"],
         EventKind::Create(CreateKind::File),
@@ -253,13 +262,14 @@ fn test_performance_with_many_patterns() {
     let duration = start.elapsed();
 
     assert!(!ignored);
-
+    
     assert!(
         duration.as_millis() < 100,
         "Pattern matching took too long: {:?}",
         duration
     );
 
+    
     let event = create_test_event(
         vec!["/project/file.tmp0"],
         EventKind::Create(CreateKind::File),
@@ -278,13 +288,14 @@ fn test_performance_with_many_patterns() {
 
 #[test]
 fn test_edge_case_patterns() {
+    
     let ignore_patterns = vec![
-        "".to_string(),
-        "*".to_string(),
-        "**".to_string(),
-        "*.".to_string(),
-        ".".to_string(),
-        ".*".to_string(),
+        "".to_string(),   
+        "*".to_string(),  
+        "**".to_string(), 
+        "*.".to_string(), 
+        ".".to_string(),  
+        ".*".to_string(), 
     ];
 
     let test_paths = vec![
@@ -295,14 +306,17 @@ fn test_edge_case_patterns() {
         "/path/to/file",
     ];
 
+    
     for path in test_paths {
         let event = create_test_event(vec![path], EventKind::Create(CreateKind::File));
         let _ignored = should_ignore_event(&event, &ignore_patterns);
+        
     }
 }
 
 #[test]
 fn test_empty_inputs() {
+    
     let empty_patterns: Vec<String> = vec![];
     let event = create_test_event(vec!["/any/file"], EventKind::Create(CreateKind::File));
     assert!(!should_ignore_event(&event, &empty_patterns));
@@ -318,11 +332,12 @@ fn test_empty_inputs() {
 
 #[test]
 fn test_special_characters_in_paths() {
+    
     let ignore_patterns = vec![
-        "* *".to_string(),
-        "*[*".to_string(),
-        "*(*".to_string(),
-        "*&*".to_string(),
+        "* *".to_string(), 
+        "*[*".to_string(), 
+        "*(*".to_string(), 
+        "*&*".to_string(), 
     ];
 
     let special_paths = vec![
@@ -336,5 +351,6 @@ fn test_special_characters_in_paths() {
     for path in special_paths {
         let event = create_test_event(vec![path], EventKind::Create(CreateKind::File));
         let _ignored = should_ignore_event(&event, &ignore_patterns);
+        
     }
 }
