@@ -86,8 +86,8 @@ msg_press_ctrl_c: "按 Ctrl+C 停止监控"
 
 # 消息 - 目标文件显示
 msg_target_files_header: "目标文件："
-msg_target_file_exists: "存在"
-msg_target_file_missing: "缺失"
+msg_target_file_exists: "目标文件存在："
+msg_target_file_missing: "目标文件缺失："
 
 # 消息 - 路径同步操作
 msg_loading_target_files: "正在加载目标文件..."
