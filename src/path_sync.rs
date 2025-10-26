@@ -342,10 +342,10 @@ impl PathSyncManager {
                 let current_canonical = Path::new(current_key)
                     .canonicalize()
                     .unwrap_or_else(|_| PathBuf::from(current_key));
-                
+
                 // Check if current path starts with old path (is a subpath)
-                current_canonical.starts_with(&old_path_canonical) ||
-                Path::new(current_key).starts_with(old_path)
+                current_canonical.starts_with(&old_path_canonical)
+                    || Path::new(current_key).starts_with(old_path)
             };
 
             if should_update {
@@ -356,15 +356,23 @@ impl PathSyncManager {
                 } else {
                     // Subpath - replace the prefix
                     if let Ok(relative_part) = Path::new(current_key).strip_prefix(old_path) {
-                        new_path_buf.join(relative_part).to_string_lossy().to_string()
+                        new_path_buf
+                            .join(relative_part)
+                            .to_string_lossy()
+                            .to_string()
                     } else {
                         // Try with canonical paths
                         let current_canonical = Path::new(current_key)
                             .canonicalize()
                             .unwrap_or_else(|_| PathBuf::from(current_key));
-                        
-                        if let Ok(relative_part) = current_canonical.strip_prefix(&old_path_canonical) {
-                            new_path_buf.join(relative_part).to_string_lossy().to_string()
+
+                        if let Ok(relative_part) =
+                            current_canonical.strip_prefix(&old_path_canonical)
+                        {
+                            new_path_buf
+                                .join(relative_part)
+                                .to_string_lossy()
+                                .to_string()
                         } else {
                             // Fallback: shouldn't happen, but keep original key
                             current_key.clone()
@@ -658,13 +666,21 @@ mod tests {
 
         // 验证初始状态 - 应该有两个路径被跟踪
         assert_eq!(manager.path_mappings.len(), 2);
-        assert!(manager.path_mappings.contains_key(&old_dir.to_string_lossy().to_string()));
-        assert!(manager.path_mappings.contains_key(&sub_file.to_string_lossy().to_string()));
+        assert!(
+            manager
+                .path_mappings
+                .contains_key(&old_dir.to_string_lossy().to_string())
+        );
+        assert!(
+            manager
+                .path_mappings
+                .contains_key(&sub_file.to_string_lossy().to_string())
+        );
 
         // 模拟目录重命名
         let new_dir = watch_dir.join("source");
         let new_sub_file = new_dir.join("main.rs");
-        
+
         // 重命名目录
         manager
             .sync_path_change(&old_dir.to_string_lossy(), &new_dir.to_string_lossy())
@@ -672,19 +688,23 @@ mod tests {
 
         // 读取更新后的文件内容
         let content = fs::read_to_string(&json_file).unwrap();
-        
+
         // 验证目录路径已更新
         assert!(content.contains("source"));
         assert!(!content.contains("\"src\""));
-        
+
         // 关键测试：验证子文件路径也已更新
-        assert!(content.contains(&new_sub_file.to_string_lossy().to_string()), 
-               "子文件路径应该从 {} 更新为 {}", 
-               sub_file.to_string_lossy(), 
-               new_sub_file.to_string_lossy());
-        assert!(!content.contains(&sub_file.to_string_lossy().to_string()), 
-               "旧的子文件路径 {} 应该被移除", 
-               sub_file.to_string_lossy());
+        assert!(
+            content.contains(&new_sub_file.to_string_lossy().to_string()),
+            "子文件路径应该从 {} 更新为 {}",
+            sub_file.to_string_lossy(),
+            new_sub_file.to_string_lossy()
+        );
+        assert!(
+            !content.contains(&sub_file.to_string_lossy().to_string()),
+            "旧的子文件路径 {} 应该被移除",
+            sub_file.to_string_lossy()
+        );
     }
 
     #[test]
@@ -696,10 +716,10 @@ mod tests {
         // 创建嵌套目录结构
         let old_dir = watch_dir.join("test_files").join("src");
         fs::create_dir_all(&old_dir).unwrap();
-        
+
         let sub_dir = old_dir.join("components");
         fs::create_dir_all(&sub_dir).unwrap();
-        
+
         let main_file = old_dir.join("main.rs");
         let comp_file = sub_dir.join("button.rs");
         fs::write(&main_file, "fn main() {}").unwrap();
@@ -735,15 +755,15 @@ mod tests {
             .unwrap();
 
         let content = fs::read_to_string(&json_file).unwrap();
-        
+
         // 验证所有相关路径都已更新
         assert!(content.contains("source"));
         assert!(!content.contains("/src/"));
-        
+
         // 验证嵌套文件路径正确更新
         let new_main_file = new_dir.join("main.rs");
         let new_comp_file = new_dir.join("components").join("button.rs");
-        
+
         assert!(content.contains(&new_main_file.to_string_lossy().to_string()));
         assert!(content.contains(&new_comp_file.to_string_lossy().to_string()));
         assert!(!content.contains(&main_file.to_string_lossy().to_string()));
