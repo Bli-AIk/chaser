@@ -6,8 +6,7 @@ mod target_files;
 
 use anyhow::Result;
 use chaser::should_ignore_event;
-use clap::Parser;
-use cli::{Cli, Commands};
+use cli::{Commands, build_cli, parse_command};
 use config::Config;
 use i18n::{available_locales, init_i18n_with_locale, is_locale_supported, set_locale, t, tf};
 use notify::{
@@ -26,9 +25,11 @@ fn main() -> Result<()> {
     // Initialize i18n with the preferred language
     init_i18n_with_locale(&locale)?;
 
-    let cli = Cli::parse();
+    // Build CLI with internationalized strings
+    let cli = build_cli();
+    let matches = cli.get_matches();
 
-    match cli.command {
+    match parse_command(&matches) {
         Some(command) => handle_command(command),
         None => run_monitor(),
     }
