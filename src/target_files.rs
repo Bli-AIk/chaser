@@ -233,7 +233,7 @@ impl TargetFile {
         }
 
         let content = fs::read_to_string(&self.path)?;
-        
+
         let updated_content = match self.format {
             TargetFileFormat::Json => self.update_json_content(&content, old_path, new_path)?,
             TargetFileFormat::Yaml => self.update_yaml_content(&content, old_path, new_path)?,
@@ -331,10 +331,10 @@ impl TargetFile {
         if lines.is_empty() {
             return Ok(content.to_string());
         }
-        
+
         let mut updated_lines = Vec::new();
         updated_lines.push(lines[0].to_string()); // Keep header
-        
+
         for line in &lines[1..] {
             if line.starts_with(old_path) {
                 // Replace the path at the beginning of the line
@@ -344,7 +344,7 @@ impl TargetFile {
                 updated_lines.push(line.to_string());
             }
         }
-        
+
         Ok(updated_lines.join("\n") + "\n")
     }
 
@@ -367,35 +367,36 @@ impl TargetFile {
         }
         Ok(())
     }
-
-    /// Get all valid (existing) paths
-    pub fn get_valid_paths(&self) -> Vec<&String> {
-        self.paths
-            .iter()
-            .filter(|entry| entry.exists)
-            .map(|entry| &entry.path)
-            .collect()
-    }
-
-    /// Get all tracked paths (including deleted ones)
-    pub fn get_all_paths(&self) -> Vec<&String> {
-        self.paths.iter().map(|entry| &entry.path).collect()
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs;
+    use tempfile::TempDir;
 
     #[test]
     fn test_target_file_format_detection() {
-        assert_eq!(TargetFileFormat::from_path(Path::new("test.json")).unwrap(), TargetFileFormat::Json);
-        assert_eq!(TargetFileFormat::from_path(Path::new("test.yaml")).unwrap(), TargetFileFormat::Yaml);
-        assert_eq!(TargetFileFormat::from_path(Path::new("test.yml")).unwrap(), TargetFileFormat::Yaml);
-        assert_eq!(TargetFileFormat::from_path(Path::new("test.toml")).unwrap(), TargetFileFormat::Toml);
-        assert_eq!(TargetFileFormat::from_path(Path::new("test.csv")).unwrap(), TargetFileFormat::Csv);
+        assert_eq!(
+            TargetFileFormat::from_path(Path::new("test.json")).unwrap(),
+            TargetFileFormat::Json
+        );
+        assert_eq!(
+            TargetFileFormat::from_path(Path::new("test.yaml")).unwrap(),
+            TargetFileFormat::Yaml
+        );
+        assert_eq!(
+            TargetFileFormat::from_path(Path::new("test.yml")).unwrap(),
+            TargetFileFormat::Yaml
+        );
+        assert_eq!(
+            TargetFileFormat::from_path(Path::new("test.toml")).unwrap(),
+            TargetFileFormat::Toml
+        );
+        assert_eq!(
+            TargetFileFormat::from_path(Path::new("test.csv")).unwrap(),
+            TargetFileFormat::Csv
+        );
         assert!(TargetFileFormat::from_path(Path::new("test.txt")).is_err()); // Unsupported format
     }
 
@@ -419,7 +420,7 @@ mod tests {
             "not a path",
             "/absolute/path"
         ]"#;
-        
+
         let paths = TargetFile::extract_paths_from_json(json_content).unwrap();
         assert_eq!(paths.len(), 3);
         assert!(paths.iter().any(|p| p.path == "./test_files/file1.txt"));
@@ -436,7 +437,7 @@ paths:
   - "/absolute/path"
 other_field: "value"
 "#;
-        
+
         let paths = TargetFile::extract_paths_from_yaml(yaml_content).unwrap();
         assert_eq!(paths.len(), 3);
         assert!(paths.iter().any(|p| p.path == "./test_files/file1.txt"));
@@ -450,7 +451,7 @@ other_field: "value"
 paths = ["./test_files/file1.txt", "./test_files/dir", "/absolute/path"]
 other_field = "value"
 "#;
-        
+
         let paths = TargetFile::extract_paths_from_toml(toml_content).unwrap();
         assert_eq!(paths.len(), 3);
         assert!(paths.iter().any(|p| p.path == "./test_files/file1.txt"));
@@ -465,7 +466,7 @@ other_field = "value"
 ./test_files/dir,directory,Test directory
 /absolute/path,file,Absolute path
 "#;
-        
+
         let paths = TargetFile::extract_paths_from_csv(csv_content).unwrap();
         assert_eq!(paths.len(), 3);
         assert!(paths.iter().any(|p| p.path == "./test_files/file1.txt"));
@@ -477,13 +478,15 @@ other_field = "value"
     fn test_json_file_path_update() {
         let temp_dir = TempDir::new().unwrap();
         let json_file = temp_dir.path().join("test.json");
-        
+
         let initial_content = r#"["./test_files/old_path", "./test_files/keep_path"]"#;
         fs::write(&json_file, initial_content).unwrap();
-        
+
         let mut target_file = TargetFile::new(json_file.clone()).unwrap();
-        target_file.update_path("./test_files/old_path", "./test_files/new_path").unwrap();
-        
+        target_file
+            .update_path("./test_files/old_path", "./test_files/new_path")
+            .unwrap();
+
         let updated_content = fs::read_to_string(&json_file).unwrap();
         assert!(updated_content.contains("./test_files/new_path"));
         assert!(updated_content.contains("./test_files/keep_path"));
@@ -494,19 +497,21 @@ other_field = "value"
     fn test_yaml_file_path_update() {
         let temp_dir = TempDir::new().unwrap();
         let yaml_file = temp_dir.path().join("test.yaml");
-        
+
         let initial_content = r#"paths:
   - "./test_files/old_path"
   - "./test_files/keep_path"
 other_field: "value"
 "#;
         fs::write(&yaml_file, initial_content).unwrap();
-        
+
         let mut target_file = TargetFile::new(yaml_file.clone()).unwrap();
-        target_file.update_path("./test_files/old_path", "./test_files/new_path").unwrap();
-        
+        target_file
+            .update_path("./test_files/old_path", "./test_files/new_path")
+            .unwrap();
+
         let updated_content = fs::read_to_string(&yaml_file).unwrap();
-        
+
         assert!(updated_content.contains("./test_files/new_path"));
         assert!(updated_content.contains("./test_files/keep_path"));
         assert!(!updated_content.contains("./test_files/old_path"));
@@ -517,15 +522,17 @@ other_field: "value"
     fn test_toml_file_path_update() {
         let temp_dir = TempDir::new().unwrap();
         let toml_file = temp_dir.path().join("test.toml");
-        
+
         let initial_content = r#"paths = ["./test_files/old_path", "./test_files/keep_path"]
 other_field = "value"
 "#;
         fs::write(&toml_file, initial_content).unwrap();
-        
+
         let mut target_file = TargetFile::new(toml_file.clone()).unwrap();
-        target_file.update_path("./test_files/old_path", "./test_files/new_path").unwrap();
-        
+        target_file
+            .update_path("./test_files/old_path", "./test_files/new_path")
+            .unwrap();
+
         let updated_content = fs::read_to_string(&toml_file).unwrap();
         assert!(updated_content.contains("./test_files/new_path"));
         assert!(updated_content.contains("./test_files/keep_path"));
@@ -537,16 +544,18 @@ other_field = "value"
     fn test_csv_file_path_update() {
         let temp_dir = TempDir::new().unwrap();
         let csv_file = temp_dir.path().join("test.csv");
-        
+
         let initial_content = r#"path,type,description
 ./test_files/old_path,file,Old file
 ./test_files/keep_path,directory,Keep this
 "#;
         fs::write(&csv_file, initial_content).unwrap();
-        
+
         let mut target_file = TargetFile::new(csv_file.clone()).unwrap();
-        target_file.update_path("./test_files/old_path", "./test_files/new_path").unwrap();
-        
+        target_file
+            .update_path("./test_files/old_path", "./test_files/new_path")
+            .unwrap();
+
         let updated_content = fs::read_to_string(&csv_file).unwrap();
         assert!(updated_content.contains("./test_files/new_path"));
         assert!(updated_content.contains("./test_files/keep_path"));
@@ -557,15 +566,18 @@ other_field = "value"
     #[test]
     fn test_complex_path_scenarios() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Test with paths that are substrings of each other
         let json_file = temp_dir.path().join("test.json");
-        let initial_content = r#"["./test_files/path", "./test_files/path_extended", "./test_files/other"]"#;
+        let initial_content =
+            r#"["./test_files/path", "./test_files/path_extended", "./test_files/other"]"#;
         fs::write(&json_file, initial_content).unwrap();
-        
+
         let mut target_file = TargetFile::new(json_file.clone()).unwrap();
-        target_file.update_path("./test_files/path", "./test_files/renamed").unwrap();
-        
+        target_file
+            .update_path("./test_files/path", "./test_files/renamed")
+            .unwrap();
+
         let updated_content = fs::read_to_string(&json_file).unwrap();
         assert!(updated_content.contains("./test_files/renamed"));
         assert!(updated_content.contains("./test_files/path_extended")); // Should not be changed
@@ -573,47 +585,54 @@ other_field = "value"
         assert!(!updated_content.contains("\"./test_files/path\"")); // Exact match should be gone
     }
 
-    #[test] 
+    #[test]
     fn test_mixed_file_formats() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         // Create files in different formats with same paths
         let json_file = temp_dir.path().join("test.json");
         let yaml_file = temp_dir.path().join("test.yaml");
         let toml_file = temp_dir.path().join("test.toml");
         let csv_file = temp_dir.path().join("test.csv");
-        
+
         fs::write(&json_file, r#"["./test_files/shared_path"]"#).unwrap();
         fs::write(&yaml_file, "paths:\n  - \"./test_files/shared_path\"").unwrap();
         fs::write(&toml_file, "paths = [\"./test_files/shared_path\"]").unwrap();
         fs::write(&csv_file, "path,type\n./test_files/shared_path,file").unwrap();
-        
+
         let mut json_target = TargetFile::new(json_file.clone()).unwrap();
         let mut yaml_target = TargetFile::new(yaml_file.clone()).unwrap();
         let mut toml_target = TargetFile::new(toml_file.clone()).unwrap();
         let mut csv_target = TargetFile::new(csv_file.clone()).unwrap();
-        
+
         // Update all files
-        json_target.update_path("./test_files/shared_path", "./test_files/updated_path").unwrap();
-        yaml_target.update_path("./test_files/shared_path", "./test_files/updated_path").unwrap();
-        toml_target.update_path("./test_files/shared_path", "./test_files/updated_path").unwrap();
-        csv_target.update_path("./test_files/shared_path", "./test_files/updated_path").unwrap();
-        
+        json_target
+            .update_path("./test_files/shared_path", "./test_files/updated_path")
+            .unwrap();
+        yaml_target
+            .update_path("./test_files/shared_path", "./test_files/updated_path")
+            .unwrap();
+        toml_target
+            .update_path("./test_files/shared_path", "./test_files/updated_path")
+            .unwrap();
+        csv_target
+            .update_path("./test_files/shared_path", "./test_files/updated_path")
+            .unwrap();
+
         // Verify all formats were updated
         let json_content = fs::read_to_string(&json_file).unwrap();
         let yaml_content = fs::read_to_string(&yaml_file).unwrap();
         let toml_content = fs::read_to_string(&toml_file).unwrap();
         let csv_content = fs::read_to_string(&csv_file).unwrap();
-        
+
         assert!(json_content.contains("./test_files/updated_path"));
         assert!(yaml_content.contains("./test_files/updated_path"));
         assert!(toml_content.contains("./test_files/updated_path"));
         assert!(csv_content.contains("./test_files/updated_path"));
-        
+
         assert!(!json_content.contains("./test_files/shared_path"));
         assert!(!yaml_content.contains("./test_files/shared_path"));
         assert!(!toml_content.contains("./test_files/shared_path"));
         assert!(!csv_content.contains("./test_files/shared_path"));
     }
 }
-
