@@ -2,9 +2,22 @@
 name = "chaser"
 version = "0.1.0"
 edition = "2024"
+authors = ["Bli-AIk <haikun2333@gmail.com>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Bli-AIk/chaser"
 description = "An automated file path synchronization tool that updates changed paths in configuration files in real time."
+homepage = "https://github.com/Bli-AIk/chaser"
+repository = "https://github.com/Bli-AIk/chaser"
+documentation = "https://docs.rs/chaser"
+readme = "readme.md"
+keywords = ["file-monitor", "path-sync", "automation", "configuration", "cli"]
+categories = ["command-line-utilities", "filesystem", "config"]
+exclude = [
+    "test_files/*",
+    "test_scenario/*", 
+    "target_test.*",
+    ".github/*",
+    "*.svg"
+]
 
 [[bin]]
 name = "chaser"
