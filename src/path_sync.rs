@@ -321,63 +321,93 @@ impl PathSyncManager {
             tf("msg_syncing_path_change", &[old_path, new_path]).bright_blue()
         );
 
-        // Try to find the path mapping, considering both exact match and canonical path matching
-        let mut found_key: Option<String> = None;
+        // Normalize paths for consistent comparison
         let old_path_canonical = Path::new(old_path)
             .canonicalize()
             .unwrap_or_else(|_| PathBuf::from(old_path));
+        let new_path_buf = PathBuf::from(new_path);
 
-        // First try exact match
-        if self.path_mappings.contains_key(old_path) {
-            found_key = Some(old_path.to_string());
-        } else {
-            // Try canonical path matching
-            for (key, _) in &self.path_mappings {
-                let key_canonical = Path::new(key)
+        // Find all paths that need to be updated:
+        // 1. Exact match of the old path
+        // 2. Any paths that are subdirectories/subfiles of the old path
+        let mut paths_to_update: Vec<(String, String, PathMapping)> = Vec::new();
+
+        // First, collect all mappings that need to be updated
+        for (current_key, mapping) in &self.path_mappings {
+            let should_update = if current_key == old_path {
+                // Exact match
+                true
+            } else {
+                // Check if current path is a subdirectory of the old path
+                let current_canonical = Path::new(current_key)
                     .canonicalize()
-                    .unwrap_or_else(|_| PathBuf::from(key));
+                    .unwrap_or_else(|_| PathBuf::from(current_key));
+                
+                // Check if current path starts with old path (is a subpath)
+                current_canonical.starts_with(&old_path_canonical) ||
+                Path::new(current_key).starts_with(old_path)
+            };
 
-                if old_path_canonical == key_canonical {
-                    found_key = Some(key.clone());
-                    break;
-                }
+            if should_update {
+                // Calculate the new path for this entry
+                let new_key = if current_key == old_path {
+                    // Exact match - replace with new path
+                    new_path.to_string()
+                } else {
+                    // Subpath - replace the prefix
+                    if let Ok(relative_part) = Path::new(current_key).strip_prefix(old_path) {
+                        new_path_buf.join(relative_part).to_string_lossy().to_string()
+                    } else {
+                        // Try with canonical paths
+                        let current_canonical = Path::new(current_key)
+                            .canonicalize()
+                            .unwrap_or_else(|_| PathBuf::from(current_key));
+                        
+                        if let Ok(relative_part) = current_canonical.strip_prefix(&old_path_canonical) {
+                            new_path_buf.join(relative_part).to_string_lossy().to_string()
+                        } else {
+                            // Fallback: shouldn't happen, but keep original key
+                            current_key.clone()
+                        }
+                    }
+                };
+
+                paths_to_update.push((current_key.clone(), new_key, mapping.clone()));
             }
         }
 
-        if let Some(key) = found_key {
-            if let Some(mapping) = self.path_mappings.get_mut(&key) {
-                let file_indices = mapping.target_files.clone();
-
-                // Update all target files containing this path
-                for &file_idx in &file_indices {
-                    if let Some(target_file) = self.target_files.get_mut(file_idx) {
-                        target_file.update_path(&key, new_path)?;
-                        println!(
-                            "  {}",
-                            tf(
-                                "msg_target_file_updated",
-                                &[&target_file.path.display().to_string()]
-                            )
-                            .green()
-                        );
-                    }
-                }
-
-                // Update the mapping
-                mapping.current_path = new_path.to_string();
-                mapping.exists = Path::new(new_path).exists();
-
-                // Update the key in the HashMap
-                let updated_mapping = mapping.clone();
-                self.path_mappings.remove(&key);
-                self.path_mappings
-                    .insert(new_path.to_string(), updated_mapping);
-            }
-        } else {
+        if paths_to_update.is_empty() {
             println!(
                 "  {}",
                 tf("msg_path_not_found_in_tracking", &[old_path]).yellow()
             );
+            return Ok(());
+        }
+
+        // Now update all the paths
+        for (old_key, new_key, mut mapping) in paths_to_update {
+            // Update all target files containing this path
+            for &file_idx in &mapping.target_files {
+                if let Some(target_file) = self.target_files.get_mut(file_idx) {
+                    target_file.update_path(&old_key, &new_key)?;
+                    println!(
+                        "  {}",
+                        tf(
+                            "msg_target_file_updated",
+                            &[&target_file.path.display().to_string()]
+                        )
+                        .green()
+                    );
+                }
+            }
+
+            // Update the mapping
+            mapping.current_path = new_key.clone();
+            mapping.exists = Path::new(&new_key).exists();
+
+            // Remove old mapping and insert new one
+            self.path_mappings.remove(&old_key);
+            self.path_mappings.insert(new_key, mapping);
         }
 
         Ok(())
@@ -594,5 +624,129 @@ mod tests {
         let content = fs::read_to_string(&json_file).unwrap();
         assert!(content.contains("new.txt"));
         assert!(!content.contains("old.txt"));
+    }
+
+    #[test]
+    fn test_sync_directory_rename_updates_subdirectories() {
+        let temp_dir = TempDir::new().unwrap();
+        let watch_dir = temp_dir.path().join("watch");
+        fs::create_dir_all(&watch_dir).unwrap();
+
+        // 创建一个目录和子文件
+        let old_dir = watch_dir.join("src");
+        fs::create_dir_all(&old_dir).unwrap();
+        let sub_file = old_dir.join("main.rs");
+        fs::write(&sub_file, "fn main() {}").unwrap();
+
+        // 创建目标文件，包含目录和子文件的路径
+        let json_file = temp_dir.path().join("test.json");
+        fs::write(
+            &json_file,
+            format!(
+                r#"["{}","{}"]"#,
+                old_dir.to_string_lossy(),
+                sub_file.to_string_lossy()
+            ),
+        )
+        .unwrap();
+
+        let mut manager = PathSyncManager::new(
+            vec![json_file.to_string_lossy().to_string()],
+            vec![watch_dir.to_string_lossy().to_string()],
+        )
+        .unwrap();
+
+        // 验证初始状态 - 应该有两个路径被跟踪
+        assert_eq!(manager.path_mappings.len(), 2);
+        assert!(manager.path_mappings.contains_key(&old_dir.to_string_lossy().to_string()));
+        assert!(manager.path_mappings.contains_key(&sub_file.to_string_lossy().to_string()));
+
+        // 模拟目录重命名
+        let new_dir = watch_dir.join("source");
+        let new_sub_file = new_dir.join("main.rs");
+        
+        // 重命名目录
+        manager
+            .sync_path_change(&old_dir.to_string_lossy(), &new_dir.to_string_lossy())
+            .unwrap();
+
+        // 读取更新后的文件内容
+        let content = fs::read_to_string(&json_file).unwrap();
+        
+        // 验证目录路径已更新
+        assert!(content.contains("source"));
+        assert!(!content.contains("\"src\""));
+        
+        // 关键测试：验证子文件路径也已更新
+        assert!(content.contains(&new_sub_file.to_string_lossy().to_string()), 
+               "子文件路径应该从 {} 更新为 {}", 
+               sub_file.to_string_lossy(), 
+               new_sub_file.to_string_lossy());
+        assert!(!content.contains(&sub_file.to_string_lossy().to_string()), 
+               "旧的子文件路径 {} 应该被移除", 
+               sub_file.to_string_lossy());
+    }
+
+    #[test]
+    fn test_sync_nested_directory_rename() {
+        let temp_dir = TempDir::new().unwrap();
+        let watch_dir = temp_dir.path().join("watch");
+        fs::create_dir_all(&watch_dir).unwrap();
+
+        // 创建嵌套目录结构
+        let old_dir = watch_dir.join("test_files").join("src");
+        fs::create_dir_all(&old_dir).unwrap();
+        
+        let sub_dir = old_dir.join("components");
+        fs::create_dir_all(&sub_dir).unwrap();
+        
+        let main_file = old_dir.join("main.rs");
+        let comp_file = sub_dir.join("button.rs");
+        fs::write(&main_file, "fn main() {}").unwrap();
+        fs::write(&comp_file, "pub struct Button;").unwrap();
+
+        // 创建目标文件，包含多个嵌套路径
+        let json_file = temp_dir.path().join("test.json");
+        fs::write(
+            &json_file,
+            format!(
+                r#"["{}","{}","{}","{}"]"#,
+                watch_dir.join("test_files").to_string_lossy(),
+                old_dir.to_string_lossy(),
+                main_file.to_string_lossy(),
+                comp_file.to_string_lossy()
+            ),
+        )
+        .unwrap();
+
+        let mut manager = PathSyncManager::new(
+            vec![json_file.to_string_lossy().to_string()],
+            vec![watch_dir.to_string_lossy().to_string()],
+        )
+        .unwrap();
+
+        // 验证初始状态
+        assert_eq!(manager.path_mappings.len(), 4);
+
+        // 重命名 src 目录为 source
+        let new_dir = watch_dir.join("test_files").join("source");
+        manager
+            .sync_path_change(&old_dir.to_string_lossy(), &new_dir.to_string_lossy())
+            .unwrap();
+
+        let content = fs::read_to_string(&json_file).unwrap();
+        
+        // 验证所有相关路径都已更新
+        assert!(content.contains("source"));
+        assert!(!content.contains("/src/"));
+        
+        // 验证嵌套文件路径正确更新
+        let new_main_file = new_dir.join("main.rs");
+        let new_comp_file = new_dir.join("components").join("button.rs");
+        
+        assert!(content.contains(&new_main_file.to_string_lossy().to_string()));
+        assert!(content.contains(&new_comp_file.to_string_lossy().to_string()));
+        assert!(!content.contains(&main_file.to_string_lossy().to_string()));
+        assert!(!content.contains(&comp_file.to_string_lossy().to_string()));
     }
 }
