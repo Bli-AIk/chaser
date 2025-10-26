@@ -1,4 +1,5 @@
 [
   "./test_files/final_path",
-  "./test_files/src"
+  "./test_files/src",
+  "./test_files/src/main.rs"
 ]

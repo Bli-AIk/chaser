@@ -86,8 +86,8 @@ msg_press_ctrl_c: "Press Ctrl+C to stop monitoring"
 
 # Messages - Target files display
 msg_target_files_header: "Target Files:"
-msg_target_file_exists: "exists"
-msg_target_file_missing: "missing"
+msg_target_file_exists: "Target file exists:"
+msg_target_file_missing: "Target file missing:"
 
 # Messages - Path sync operations
 msg_loading_target_files: "Loading target files..."
