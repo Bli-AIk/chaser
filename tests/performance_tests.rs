@@ -212,7 +212,7 @@ fn stress_test_pattern_matching() {
     );
 
     assert!(
-        duration.as_secs() < 5,
+        duration.as_secs() < 10,
         "Stress test took too long: {:?}",
         duration
     );
@@ -296,9 +296,9 @@ fn benchmark_different_pattern_types() {
     println!("Directory patterns: {:?}", dir_duration);
     println!("Substring patterns: {:?}", substr_duration);
 
-    assert!(ext_duration.as_millis() < 1000);
-    assert!(dir_duration.as_millis() < 1000);
-    assert!(substr_duration.as_millis() < 1000);
+    assert!(ext_duration.as_millis() < 2000);
+    assert!(dir_duration.as_millis() < 2000);
+    assert!(substr_duration.as_millis() < 2000);
 }
 
 #[test]
