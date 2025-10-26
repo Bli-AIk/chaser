@@ -1,3 +1,484 @@
-fn main() {
-    println!("Hello, world!");
+mod cli;
+mod config;
+mod i18n;
+mod path_sync;
+mod target_files;
+
+use anyhow::Result;
+use chaser::should_ignore_event;
+use cli::{Commands, build_cli, parse_command};
+use config::Config;
+use i18n::{available_locales, init_i18n_with_locale, is_locale_supported, set_locale, t, tf};
+use notify::{
+    Config as NotifyConfig, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
+};
+use owo_colors::OwoColorize;
+use path_sync::PathSyncManager;
+use std::path::Path;
+use std::sync::mpsc::channel;
+
+fn main() -> Result<()> {
+    // Load config first to get language preference
+    let config = Config::load().unwrap_or_default();
+    let locale = config.get_effective_language();
+
+    // Initialize i18n with the preferred language
+    init_i18n_with_locale(&locale)?;
+
+    // Build CLI with internationalized strings
+    let cli = build_cli();
+    let matches = cli.get_matches();
+
+    match parse_command(&matches) {
+        Some(command) => handle_command(command),
+        None => run_monitor(),
+    }
+}
+
+fn handle_command(command: Commands) -> Result<()> {
+    let mut config = Config::load_with_i18n()?;
+
+    match command {
+        Commands::Add { path } => {
+            config.add_path(path)?;
+            config.save_with_i18n()?;
+        }
+        Commands::Remove { path } => {
+            config.remove_path(&path)?;
+            config.save_with_i18n()?;
+        }
+        Commands::List => {
+            config.list_paths();
+        }
+        Commands::Config => {
+            let config_path = Config::config_file_path()?;
+            println!(
+                "{}",
+                tf(
+                    "msg_config_location",
+                    &[&config_path.display().to_string().cyan().to_string()]
+                )
+            );
+            println!("{}", t("msg_config_edit_hint").bright_white());
+        }
+        Commands::Recursive { enabled } => {
+            let enabled_bool = match enabled.to_lowercase().as_str() {
+                "true" | "1" | "yes" | "on" => true,
+                "false" | "0" | "no" | "off" => false,
+                _ => {
+                    println!("{}", tf("msg_recursive_invalid", &[&enabled]).red());
+                    return Ok(());
+                }
+            };
+            config.recursive = enabled_bool;
+            println!(
+                "{}",
+                tf("msg_recursive_set", &[&enabled_bool.to_string()]).green()
+            );
+            config.save_with_i18n()?;
+        }
+        Commands::Ignore { pattern } => {
+            if !config.ignore_patterns.contains(&pattern) {
+                config.ignore_patterns.push(pattern.clone());
+                println!("{}", tf("msg_ignore_added", &[&pattern]).green());
+                config.save_with_i18n()?;
+            } else {
+                println!("{}", tf("msg_ignore_exists", &[&pattern]).yellow());
+            }
+        }
+        Commands::Reset => {
+            config = Config::default();
+            config.save_with_i18n()?;
+            println!("{}", t("msg_config_reset").green());
+        }
+        Commands::Lang { language } => {
+            if is_locale_supported(&language) {
+                config.set_language(Some(language.clone()))?;
+                config.save_with_i18n()?;
+                set_locale(&language);
+                println!("{}", tf("msg_language_set", &[&language]).green());
+            } else {
+                let available = available_locales().join(", ");
+                println!(
+                    "{}",
+                    tf("msg_language_invalid", &[&language, &available]).red()
+                );
+            }
+        }
+        Commands::AddTarget { file } => {
+            config.add_target_file(file.clone())?;
+            config.save_with_i18n()?;
+            println!("{}", tf("msg_target_added", &[&file]).green());
+        }
+        Commands::RemoveTarget { file } => {
+            config.remove_target_file(&file)?;
+            config.save_with_i18n()?;
+            println!("{}", tf("msg_target_removed", &[&file]).green());
+        }
+        Commands::ListTargets => {
+            let target_files = config.list_target_files();
+            if target_files.is_empty() {
+                println!("{}", t("msg_no_targets").yellow());
+            } else {
+                println!("{}", t("msg_target_files"));
+                for file in target_files {
+                    println!("  - {}", file.bright_white());
+                }
+            }
+        }
+        Commands::Status => {
+            show_sync_status(&config)?;
+        }
+        Commands::Sync { once } => {
+            run_path_sync(&config, once)?;
+        }
+        Commands::UpdatePath { old_path, new_path } => {
+            update_path_manually(&config, &old_path, &new_path)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_monitor() -> Result<()> {
+    let config = Config::load_with_i18n()?;
+
+    // Validate paths
+    let invalid_paths = config.validate_paths();
+    if !invalid_paths.is_empty() {
+        println!("{}", t("msg_invalid_paths_warning").yellow());
+        for path in &invalid_paths {
+            println!("  - {}", path.red());
+        }
+        println!("{}", t("msg_add_valid_paths_hint").bright_white());
+    }
+
+    let valid_paths: Vec<_> = config
+        .watch_paths
+        .iter()
+        .filter(|p| Path::new(p).exists())
+        .collect();
+
+    if valid_paths.is_empty() {
+        println!("{}", t("msg_no_valid_paths").red());
+        return Ok(());
+    }
+
+    // Show target files list on startup
+    if !config.target_files.is_empty() {
+        println!("\n{}", t("msg_target_files_header").bright_yellow());
+        for (i, target_file) in config.target_files.iter().enumerate() {
+            let exists = Path::new(target_file).exists();
+            let status = if exists {
+                t("msg_target_file_exists").green().to_string()
+            } else {
+                t("msg_target_file_missing").red().to_string()
+            };
+            println!("  {} {} {}", i + 1, status, target_file.bright_white());
+        }
+        println!();
+    }
+
+    println!("{}", t("msg_monitoring_start").bright_green());
+    println!(
+        "{}",
+        tf("msg_monitoring_paths", &[&valid_paths.len().to_string()]).bright_white()
+    );
+    for path in &valid_paths {
+        println!("  - {}", path.cyan());
+    }
+    println!(
+        "{}",
+        tf("msg_monitoring_recursive", &[&config.recursive.to_string()]).bright_white()
+    );
+
+    watch(&config)
+}
+
+fn watch(config: &Config) -> Result<()> {
+    let (tx, rx) = channel();
+
+    // Create file watcher
+    let mut watcher = RecommendedWatcher::new(tx, NotifyConfig::default())?;
+
+    // Watch all configured paths
+    let recursive_mode = if config.recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    };
+
+    for path in &config.watch_paths {
+        if Path::new(path).exists() {
+            watcher.watch(Path::new(path), recursive_mode)?;
+            println!("{}", tf("msg_watching_path", &[path]).bright_green());
+        }
+    }
+
+    println!("{}", t("msg_monitoring_started").bright_green().bold());
+
+    for res in rx {
+        match res {
+            Ok(event) => {
+                if should_ignore_event(&event, &config.ignore_patterns) {
+                    continue;
+                }
+                handle_event(event);
+            }
+            Err(e) => println!(
+                "{}",
+                tf("msg_monitoring_error", &[&format!("{:?}", e)]).red()
+            ),
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_event(event: Event) {
+    match event.kind {
+        EventKind::Create(_) => {
+            for path in &event.paths {
+                println!(
+                    "{}",
+                    tf(
+                        "msg_file_created",
+                        &[&path.display().to_string().cyan().to_string()]
+                    )
+                    .green()
+                );
+            }
+        }
+        EventKind::Modify(modify_kind) => {
+            match modify_kind {
+                notify::event::ModifyKind::Name(name_kind) => {
+                    match name_kind {
+                        notify::event::RenameMode::Both => {
+                            // This is the actual rename event with both old and new paths
+                            if event.paths.len() >= 2 {
+                                let old_path = &event.paths[0];
+                                let new_path = &event.paths[1];
+
+                                println!("{}", t("msg_file_renamed").yellow());
+                                println!(
+                                    "{}",
+                                    tf(
+                                        "msg_rename_from",
+                                        &[&old_path.display().to_string().cyan().to_string()]
+                                    )
+                                );
+                                println!(
+                                    "{}",
+                                    tf(
+                                        "msg_rename_to",
+                                        &[&new_path.display().to_string().cyan().to_string()]
+                                    )
+                                );
+
+                                // Try to sync path changes to target files
+                                let config = Config::load_with_i18n().unwrap_or_default();
+                                if !config.target_files.is_empty() {
+                                    // Convert absolute paths to relative paths for better matching
+                                    let current_dir = std::env::current_dir().unwrap_or_default();
+
+                                    let old_path_str =
+                                        if let Ok(relative) = old_path.strip_prefix(&current_dir) {
+                                            format!("./{}", relative.display())
+                                        } else {
+                                            old_path.display().to_string()
+                                        };
+
+                                    let new_path_str =
+                                        if let Ok(relative) = new_path.strip_prefix(&current_dir) {
+                                            format!("./{}", relative.display())
+                                        } else {
+                                            new_path.display().to_string()
+                                        };
+
+                                    match PathSyncManager::new(
+                                        config.target_files.clone(),
+                                        config.watch_paths.clone(),
+                                    ) {
+                                        Ok(mut manager) => {
+                                            match manager
+                                                .sync_path_change(&old_path_str, &new_path_str)
+                                            {
+                                                Ok(()) => {
+                                                    println!(
+                                                        "{}",
+                                                        tf(
+                                                            "msg_target_files_updated",
+                                                            &[&old_path_str, &new_path_str]
+                                                        )
+                                                        .bright_green()
+                                                    );
+                                                }
+                                                Err(e) => {
+                                                    println!(
+                                                        "{}",
+                                                        tf(
+                                                            "msg_failed_to_update_target_files",
+                                                            &[&e.to_string()]
+                                                        )
+                                                        .red()
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        Err(e) => {
+                                            println!(
+                                                "{}",
+                                                tf(
+                                                    "msg_could_not_initialize_path_sync",
+                                                    &[&e.to_string()]
+                                                )
+                                                .red()
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        notify::event::RenameMode::From => {
+                            // First phase of rename, can be ignored for cleaner output
+                            println!(
+                                "{}",
+                                tf(
+                                    "msg_rename_started",
+                                    &[&event.paths[0].display().to_string().cyan().to_string()]
+                                )
+                                .yellow()
+                            );
+                        }
+                        notify::event::RenameMode::To => {
+                            // Second phase of rename, can be ignored for cleaner output
+                            println!(
+                                "{}",
+                                tf(
+                                    "msg_rename_completed",
+                                    &[&event.paths[0].display().to_string().cyan().to_string()]
+                                )
+                                .yellow()
+                            );
+                        }
+                        _ => {
+                            for path in &event.paths {
+                                println!(
+                                    "{}",
+                                    tf(
+                                        "msg_name_modified",
+                                        &[&path.display().to_string().cyan().to_string()]
+                                    )
+                                    .yellow()
+                                );
+                            }
+                        }
+                    }
+                }
+                notify::event::ModifyKind::Data(_) => {
+                    for path in &event.paths {
+                        println!(
+                            "{}",
+                            tf(
+                                "msg_file_content_modified",
+                                &[&path.display().to_string().cyan().to_string()]
+                            )
+                            .blue()
+                        );
+                    }
+                }
+                notify::event::ModifyKind::Metadata(_) => {
+                    // Metadata changes are usually not important, ignore them
+                }
+                _ => {
+                    for path in &event.paths {
+                        println!(
+                            "{}",
+                            tf(
+                                "msg_file_modified",
+                                &[&path.display().to_string().cyan().to_string()]
+                            )
+                            .blue()
+                        );
+                    }
+                }
+            }
+        }
+        EventKind::Remove(_) => {
+            for path in &event.paths {
+                println!(
+                    "{}",
+                    tf(
+                        "msg_file_deleted",
+                        &[&path.display().to_string().cyan().to_string()]
+                    )
+                    .red()
+                );
+            }
+        }
+        EventKind::Access(_) => {}
+        EventKind::Any | EventKind::Other => {}
+    }
+}
+
+fn show_sync_status(config: &Config) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!("{}", t("msg_sync_status_header").bright_blue());
+    println!("{}", "─".repeat(50).bright_black());
+
+    if config.target_files.is_empty() {
+        println!("{}", t("msg_no_targets_configured").yellow());
+        return Ok(());
+    }
+
+    let manager = PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
+    manager.print_status();
+
+    Ok(())
+}
+
+fn run_path_sync(config: &Config, once: bool) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!("{}", t("msg_starting_sync").bright_green());
+
+    let mut manager =
+        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
+
+    if once {
+        println!("{}", t("msg_sync_once_mode").bright_blue());
+        manager.refresh()?;
+        manager.print_status();
+    } else {
+        manager.start_monitoring()?;
+        manager.print_status();
+
+        println!("\n{}", t("msg_sync_monitoring").bright_green());
+        println!("{}", t("msg_press_ctrl_c").bright_white());
+
+        // Keep the program running
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    }
+
+    Ok(())
+}
+
+fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Result<()> {
+    config.validate_target_files()?;
+
+    println!(
+        "{}",
+        tf("msg_manual_path_update", &[old_path, new_path]).bright_yellow()
+    );
+
+    let mut manager =
+        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
+    manager.sync_path_change(old_path, new_path)?;
+
+    println!("{}", t("msg_path_update_completed").bright_green());
+
+    Ok(())
 }

@@ -1,0 +1,121 @@
+# Application Info
+app_name: "Chaser"
+app_description: "An automated file path synchronization tool"
+
+# Commands
+cmd_add: "Add a path to watch"
+cmd_remove: "Remove a path from watch list"
+cmd_list: "List all watched paths and settings"
+cmd_config: "Show config file location"
+cmd_recursive: "Set recursive watching (true/false)"
+cmd_ignore: "Add ignore pattern"
+cmd_reset: "Reset config to default"
+cmd_lang: "Set interface language"
+cmd_add_target: "Add a target file for path synchronization"
+cmd_remove_target: "Remove a target file"
+cmd_list_targets: "List all target files"
+cmd_status: "Show path synchronization status"
+cmd_sync: "Start path synchronization monitoring"
+cmd_update_path: "Manually update a path in target files"
+
+# Command arguments
+arg_path: "Path to add to watch list"
+arg_path_remove: "Path to remove from watch list"
+arg_recursive_enabled: "Enable or disable recursive watching"
+arg_ignore_pattern: "Pattern to ignore (e.g., \"*.tmp\", \".git/**\")"
+arg_language: "Language code (en, zh-cn)"
+arg_target_file: "Target file path (json, yaml, toml, csv)"
+arg_target_file_remove: "Target file path to remove"
+arg_sync_once: "Perform one-time sync without monitoring"
+arg_old_path: "Old path to replace"
+arg_new_path: "New path to replace with"
+
+# Messages - Configuration
+msg_config_loaded: "Loaded config from: {0}"
+msg_config_created: "Created default config at: {0}"
+msg_config_saved: "Config saved to: {0}"
+msg_config_location: "Config file location: {0}"
+msg_config_edit_hint: "You can edit this file directly if needed."
+msg_config_reset: "Config reset to default values"
+
+# Messages - Path management
+msg_path_added: "Added watch path: {0}"
+msg_path_exists: "Path already exists: {0}"
+msg_path_removed: "Removed watch path: {0}"
+msg_path_not_found: "Path not found: {0}"
+msg_no_valid_paths: "No valid paths to monitor. Add some paths using: chaser add <path>"
+msg_invalid_paths_warning: "Warning: Some paths don't exist:"
+msg_add_valid_paths_hint: "You can add valid paths using: chaser add <path>"
+
+# Messages - Settings
+msg_recursive_set: "Recursive watching set to: {0}"
+msg_recursive_invalid: "Invalid value: '{0}'. Use true/false, yes/no, 1/0, or on/off"
+msg_ignore_added: "Added ignore pattern: {0}"
+msg_ignore_exists: "Pattern already exists: {0}"
+msg_language_set: "Language set to: {0}"
+msg_language_invalid: "Unsupported language: {0}. Available: en, zh-cn"
+
+# Messages - Monitoring
+msg_monitoring_start: "Starting file monitoring..."
+msg_monitoring_paths: "Monitoring {0} path(s):"
+msg_monitoring_recursive: "Recursive: {0}"
+msg_watching_path: "Watching: {0}"
+msg_monitoring_started: "File monitoring started, press Ctrl+C to exit..."
+msg_monitoring_error: "Monitoring error: {:?}"
+
+# Messages - File events
+msg_file_created: "File created: {0}"
+msg_file_renamed: "File renamed:"
+msg_rename_from: "   From: {0}"
+msg_rename_to: "   To: {0}"
+msg_rename_started: "Rename started: {0}"
+msg_rename_completed: "Rename completed: {0}"
+msg_name_modified: "Name modified: {0}"
+msg_file_content_modified: "File content modified: {0}"
+msg_file_modified: "File modified: {0}"
+msg_file_deleted: "File deleted: {0}"
+
+# UI - List display
+ui_watch_paths: "Watch paths:"
+ui_settings: "Settings:"
+ui_recursive: "Recursive: {0}"
+ui_ignore_patterns: "Ignore patterns: {0}"
+
+# Messages - Target files
+msg_target_added: "Added target file: {0}"
+msg_target_removed: "Removed target file: {0}"
+msg_target_files: "Target files:"
+msg_no_targets: "No target files configured"
+msg_no_targets_configured: "No target files configured. Use 'chaser add-target <file>' to add one."
+
+# Messages - Path synchronization
+msg_sync_status_header: "Path Synchronization Status"
+msg_starting_sync: "Starting path synchronization..."
+msg_sync_once_mode: "Running in one-time sync mode"
+msg_sync_monitoring: "Path synchronization monitoring active"
+msg_press_ctrl_c: "Press Ctrl+C to stop monitoring"
+
+# Messages - Target files display
+msg_target_files_header: "Target Files:"
+msg_target_file_exists: "Target file exists:"
+msg_target_file_missing: "Target file missing:"
+
+# Messages - Path sync operations
+msg_loading_target_files: "Loading target files..."
+msg_target_file_loaded: "Loaded: {0} ({1} paths found)"
+msg_target_file_created: "Creating target file: {0}"
+msg_tracking_summary: "Tracking {0} unique paths across {1} target files"
+msg_syncing_path_change: "Syncing path change: {0} -> {1}"
+msg_target_file_updated: "Updated: {0}"
+msg_path_not_found_in_tracking: "Path not found in tracking: {0}"
+msg_target_files_updated: "Target files updated: {0} -> {1}"
+msg_failed_to_update_target_files: "Failed to update target files: {0}"
+msg_could_not_initialize_path_sync: "Could not initialize path sync: {0}"
+
+# Messages - Path synchronization monitoring
+msg_watch_path_not_exist: "Watch path does not exist: {0}"
+msg_path_sync_monitoring_started: "Path synchronization monitoring started"
+
+# Messages - Manual path update
+msg_manual_path_update: "Manually updating path: {0} -> {1}"
+msg_path_update_completed: "Path update completed successfully!"

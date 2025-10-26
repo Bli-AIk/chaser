@@ -1,0 +1,121 @@
+# 应用信息
+app_name: "Chaser"
+app_description: "自动化文件路径同步工具"
+
+# 命令
+cmd_add: "添加监控路径"
+cmd_remove: "从监控列表中移除路径"
+cmd_list: "列出所有监控路径和设置"
+cmd_config: "显示配置文件位置"
+cmd_recursive: "设置递归监控（true/false）"
+cmd_ignore: "添加忽略模式"
+cmd_reset: "重置配置为默认值"
+cmd_lang: "设置界面语言"
+cmd_add_target: "为路径同步添加目标文件"
+cmd_remove_target: "移除目标文件"
+cmd_list_targets: "列出所有目标文件"
+cmd_status: "显示路径同步状态"
+cmd_sync: "启动路径同步监控"
+cmd_update_path: "手动更新目标文件中的路径"
+
+# 命令参数
+arg_path: "要添加到监控列表的路径"
+arg_path_remove: "要从监控列表中移除的路径"
+arg_recursive_enabled: "启用或禁用递归监控"
+arg_ignore_pattern: "要忽略的模式（例如：\"*.tmp\", \".git/**\"）"
+arg_language: "语言代码（en, zh-cn）"
+arg_target_file: "目标文件路径（json, yaml, toml, csv）"
+arg_target_file_remove: "要移除的目标文件路径"
+arg_sync_once: "执行一次性同步而不监控"
+arg_old_path: "要替换的旧路径"
+arg_new_path: "要替换为的新路径"
+
+# 消息 - 配置
+msg_config_loaded: "已从以下位置加载配置：{0}"
+msg_config_created: "已在以下位置创建默认配置：{0}"
+msg_config_saved: "配置已保存到：{0}"
+msg_config_location: "配置文件位置：{0}"
+msg_config_edit_hint: "如果需要，您可以直接编辑此文件。"
+msg_config_reset: "配置已重置为默认值"
+
+# 消息 - 路径管理
+msg_path_added: "已添加监控路径：{0}"
+msg_path_exists: "路径已存在：{0}"
+msg_path_removed: "已移除监控路径：{0}"
+msg_path_not_found: "未找到路径：{0}"
+msg_no_valid_paths: "没有有效的路径可供监控。使用以下命令添加路径：chaser add <路径>"
+msg_invalid_paths_warning: "警告：某些路径不存在："
+msg_add_valid_paths_hint: "您可以使用以下命令添加有效路径：chaser add <路径>"
+
+# 消息 - 设置
+msg_recursive_set: "递归监控已设置为：{0}"
+msg_recursive_invalid: "无效值：'{0}'。请使用 true/false、yes/no、1/0 或 on/off"
+msg_ignore_added: "已添加忽略模式：{0}"
+msg_ignore_exists: "模式已存在：{0}"
+msg_language_set: "语言已设置为：{0}"
+msg_language_invalid: "不支持的语言：{0}。可用语言：en, zh-cn"
+
+# 消息 - 监控
+msg_monitoring_start: "开始文件监控..."
+msg_monitoring_paths: "监控 {0} 个路径："
+msg_monitoring_recursive: "递归：{0}"
+msg_watching_path: "正在监控：{0}"
+msg_monitoring_started: "文件监控已启动，按 Ctrl+C 退出..."
+msg_monitoring_error: "监控错误：{:?}"
+
+# 消息 - 文件事件
+msg_file_created: "文件已创建：{0}"
+msg_file_renamed: "文件已重命名："
+msg_rename_from: "   从：{0}"
+msg_rename_to: "   到：{0}"
+msg_rename_started: "重命名开始：{0}"
+msg_rename_completed: "重命名完成：{0}"
+msg_name_modified: "名称已修改：{0}"
+msg_file_content_modified: "文件内容已修改：{0}"
+msg_file_modified: "文件已修改：{0}"
+msg_file_deleted: "文件已删除：{0}"
+
+# 界面 - 列表显示
+ui_watch_paths: "监控路径："
+ui_settings: "设置："
+ui_recursive: "递归：{0}"
+ui_ignore_patterns: "忽略模式：{0}"
+
+# 消息 - 目标文件
+msg_target_added: "已添加目标文件：{0}"
+msg_target_removed: "已移除目标文件：{0}"
+msg_target_files: "目标文件："
+msg_no_targets: "未配置目标文件"
+msg_no_targets_configured: "未配置目标文件。使用 'chaser add-target <file>' 添加一个。"
+
+# 消息 - 路径同步
+msg_sync_status_header: "路径同步状态"
+msg_starting_sync: "开始路径同步..."
+msg_sync_once_mode: "运行在一次性同步模式"
+msg_sync_monitoring: "路径同步监控已激活"
+msg_press_ctrl_c: "按 Ctrl+C 停止监控"
+
+# 消息 - 目标文件显示
+msg_target_files_header: "目标文件："
+msg_target_file_exists: "目标文件存在："
+msg_target_file_missing: "目标文件缺失："
+
+# 消息 - 路径同步操作
+msg_loading_target_files: "正在加载目标文件..."
+msg_target_file_loaded: "已加载：{0}（找到 {1} 个路径）"
+msg_target_file_created: "正在创建目标文件：{0}"
+msg_tracking_summary: "正在跟踪 {0} 个唯一路径，分布在 {1} 个目标文件中"
+msg_syncing_path_change: "正在同步路径更改：{0} -> {1}"
+msg_target_file_updated: "已更新：{0}"
+msg_path_not_found_in_tracking: "在跟踪中未找到路径：{0}"
+msg_target_files_updated: "目标文件已更新：{0} -> {1}"
+msg_failed_to_update_target_files: "更新目标文件失败：{0}"
+msg_could_not_initialize_path_sync: "无法初始化路径同步：{0}"
+
+# 消息 - 路径同步监控
+msg_watch_path_not_exist: "监控路径不存在：{0}"
+msg_path_sync_monitoring_started: "路径同步监控已启动"
+
+# 消息 - 手动路径更新
+msg_manual_path_update: "手动更新路径：{0} -> {1}"
+msg_path_update_completed: "路径更新成功完成！"
