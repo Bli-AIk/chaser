@@ -168,10 +168,10 @@ fn run_monitor() -> Result<()> {
         println!("\n{}", t("msg_target_files_header").bright_yellow());
         for (i, target_file) in config.target_files.iter().enumerate() {
             let exists = Path::new(target_file).exists();
-            let status = if exists { 
-                t("msg_target_file_exists").green().to_string() 
-            } else { 
-                t("msg_target_file_missing").red().to_string() 
+            let status = if exists {
+                t("msg_target_file_exists").green().to_string()
+            } else {
+                t("msg_target_file_missing").red().to_string()
             };
             println!("  {} {} {}", i + 1, status, target_file.bright_white());
         }
@@ -257,7 +257,7 @@ fn handle_event(event: Event) {
                             if event.paths.len() >= 2 {
                                 let old_path = &event.paths[0];
                                 let new_path = &event.paths[1];
-                                
+
                                 println!("{}", t("msg_file_renamed").yellow());
                                 println!(
                                     "{}",
@@ -279,32 +279,47 @@ fn handle_event(event: Event) {
                                 if !config.target_files.is_empty() {
                                     // Convert absolute paths to relative paths for better matching
                                     let current_dir = std::env::current_dir().unwrap_or_default();
-                                    
-                                    let old_path_str = if let Ok(relative) = old_path.strip_prefix(&current_dir) {
-                                        format!("./{}", relative.display())
-                                    } else {
-                                        old_path.display().to_string()
-                                    };
-                                    
-                                    let new_path_str = if let Ok(relative) = new_path.strip_prefix(&current_dir) {
-                                        format!("./{}", relative.display())
-                                    } else {
-                                        new_path.display().to_string()
-                                    };
-                                    
-                                    match PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone()) {
+
+                                    let old_path_str =
+                                        if let Ok(relative) = old_path.strip_prefix(&current_dir) {
+                                            format!("./{}", relative.display())
+                                        } else {
+                                            old_path.display().to_string()
+                                        };
+
+                                    let new_path_str =
+                                        if let Ok(relative) = new_path.strip_prefix(&current_dir) {
+                                            format!("./{}", relative.display())
+                                        } else {
+                                            new_path.display().to_string()
+                                        };
+
+                                    match PathSyncManager::new(
+                                        config.target_files.clone(),
+                                        config.watch_paths.clone(),
+                                    ) {
                                         Ok(mut manager) => {
-                                            match manager.sync_path_change(&old_path_str, &new_path_str) {
+                                            match manager
+                                                .sync_path_change(&old_path_str, &new_path_str)
+                                            {
                                                 Ok(()) => {
                                                     println!(
                                                         "{}",
-                                                        tf("msg_target_files_updated", &[&old_path_str, &new_path_str]).bright_green()
+                                                        tf(
+                                                            "msg_target_files_updated",
+                                                            &[&old_path_str, &new_path_str]
+                                                        )
+                                                        .bright_green()
                                                     );
                                                 }
                                                 Err(e) => {
                                                     println!(
                                                         "{}",
-                                                        tf("msg_failed_to_update_target_files", &[&e.to_string()]).red()
+                                                        tf(
+                                                            "msg_failed_to_update_target_files",
+                                                            &[&e.to_string()]
+                                                        )
+                                                        .red()
                                                     );
                                                 }
                                             }
@@ -312,7 +327,11 @@ fn handle_event(event: Event) {
                                         Err(e) => {
                                             println!(
                                                 "{}",
-                                                tf("msg_could_not_initialize_path_sync", &[&e.to_string()]).red()
+                                                tf(
+                                                    "msg_could_not_initialize_path_sync",
+                                                    &[&e.to_string()]
+                                                )
+                                                .red()
                                             );
                                         }
                                     }
@@ -458,10 +477,7 @@ fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Resu
         PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
     manager.sync_path_change(old_path, new_path)?;
 
-    println!(
-        "{}",
-        t("msg_path_update_completed").bright_green()
-    );
+    println!("{}", t("msg_path_update_completed").bright_green());
 
     Ok(())
 }

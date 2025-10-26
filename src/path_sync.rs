@@ -1,5 +1,5 @@
-use crate::target_files::TargetFile;
 use crate::i18n::{t, tf};
+use crate::target_files::TargetFile;
 use anyhow::Result;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use owo_colors::OwoColorize;
@@ -46,7 +46,11 @@ impl PathSyncManager {
                 Ok(target_file) => {
                     println!(
                         "  {}",
-                        tf("msg_target_file_loaded", &[target_path, &target_file.paths.len().to_string()]).green()
+                        tf(
+                            "msg_target_file_loaded",
+                            &[target_path, &target_file.paths.len().to_string()]
+                        )
+                        .green()
                     );
 
                     // Validate that paths are within watch directories
@@ -100,7 +104,14 @@ impl PathSyncManager {
 
         println!(
             "  {}",
-            tf("msg_tracking_summary", &[&path_mappings.len().to_string(), &target_files.len().to_string()]).bright_blue()
+            tf(
+                "msg_tracking_summary",
+                &[
+                    &path_mappings.len().to_string(),
+                    &target_files.len().to_string()
+                ]
+            )
+            .bright_blue()
         );
 
         Ok(Self {
@@ -183,10 +194,7 @@ impl PathSyncManager {
 
         self.watcher = Some(watcher);
 
-        println!(
-            "{}",
-            t("msg_path_sync_monitoring_started").bright_green()
-        );
+        println!("{}", t("msg_path_sync_monitoring_started").bright_green());
 
         // Handle events in a separate thread
         let target_files = Arc::new(Mutex::new(self.target_files.clone()));
@@ -328,7 +336,7 @@ impl PathSyncManager {
                 let key_canonical = Path::new(key)
                     .canonicalize()
                     .unwrap_or_else(|_| PathBuf::from(key));
-                
+
                 if old_path_canonical == key_canonical {
                     found_key = Some(key.clone());
                     break;
@@ -346,7 +354,11 @@ impl PathSyncManager {
                         target_file.update_path(&key, new_path)?;
                         println!(
                             "  {}",
-                            tf("msg_target_file_updated", &[&target_file.path.display().to_string()]).green()
+                            tf(
+                                "msg_target_file_updated",
+                                &[&target_file.path.display().to_string()]
+                            )
+                            .green()
                         );
                     }
                 }
