@@ -165,10 +165,14 @@ fn run_monitor() -> Result<()> {
 
     // Show target files list on startup
     if !config.target_files.is_empty() {
-        println!("\n{} Target Files:", "📋".bright_yellow());
+        println!("\n{}", t("msg_target_files_header").bright_yellow());
         for (i, target_file) in config.target_files.iter().enumerate() {
             let exists = Path::new(target_file).exists();
-            let status = if exists { "✓".green().to_string() } else { "✗".red().to_string() };
+            let status = if exists { 
+                t("msg_target_file_exists").green().to_string() 
+            } else { 
+                t("msg_target_file_missing").red().to_string() 
+            };
             println!("  {} {} {}", i + 1, status, target_file.bright_white());
         }
         println!();
@@ -293,26 +297,22 @@ fn handle_event(event: Event) {
                                             match manager.sync_path_change(&old_path_str, &new_path_str) {
                                                 Ok(()) => {
                                                     println!(
-                                                        "{} {} → {}",
-                                                        "🔄 Target files updated:".bright_green(),
-                                                        old_path_str.bright_white(),
-                                                        new_path_str.bright_green()
+                                                        "{}",
+                                                        tf("msg_target_files_updated", &[&old_path_str, &new_path_str]).bright_green()
                                                     );
                                                 }
                                                 Err(e) => {
                                                     println!(
-                                                        "{} Failed to update target files: {}",
-                                                        "⚠️".yellow(),
-                                                        e.to_string().red()
+                                                        "{}",
+                                                        tf("msg_failed_to_update_target_files", &[&e.to_string()]).red()
                                                     );
                                                 }
                                             }
                                         }
                                         Err(e) => {
                                             println!(
-                                                "{} Could not initialize path sync: {}",
-                                                "⚠️".yellow(),
-                                                e.to_string().red()
+                                                "{}",
+                                                tf("msg_could_not_initialize_path_sync", &[&e.to_string()]).red()
                                             );
                                         }
                                     }
@@ -450,10 +450,8 @@ fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Resu
     config.validate_target_files()?;
 
     println!(
-        "{} Manually updating path: {} → {}",
-        "🔧".bright_yellow(),
-        old_path.bright_white(),
-        new_path.bright_green()
+        "{}",
+        tf("msg_manual_path_update", &[old_path, new_path]).bright_yellow()
     );
 
     let mut manager =
@@ -461,8 +459,8 @@ fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Resu
     manager.sync_path_change(old_path, new_path)?;
 
     println!(
-        "{} Path update completed successfully!",
-        "✅".bright_green()
+        "{}",
+        t("msg_path_update_completed").bright_green()
     );
 
     Ok(())

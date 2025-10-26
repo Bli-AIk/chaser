@@ -1,4 +1,5 @@
 use crate::target_files::TargetFile;
+use crate::i18n::{t, tf};
 use anyhow::Result;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use owo_colors::OwoColorize;
@@ -28,16 +29,15 @@ impl PathSyncManager {
         let mut target_files = Vec::new();
         let mut path_mappings: HashMap<String, PathMapping> = HashMap::new();
 
-        println!("{} Loading target files...", "◉".cyan());
+        println!("{}", t("msg_loading_target_files").cyan());
 
         for (index, target_path) in target_file_paths.iter().enumerate() {
             let path = PathBuf::from(target_path);
 
             if !path.exists() {
                 println!(
-                    "  {} Creating target file: {}",
-                    "◦".yellow(),
-                    target_path.bright_white()
+                    "  {}",
+                    tf("msg_target_file_created", &[target_path]).yellow()
                 );
                 Self::create_empty_target_file(&path)?;
             }
@@ -45,10 +45,8 @@ impl PathSyncManager {
             match TargetFile::new(path.clone()) {
                 Ok(target_file) => {
                     println!(
-                        "  {} Loaded: {} ({} paths found)",
-                        "✓".green(),
-                        target_path.bright_white(),
-                        target_file.paths.len().to_string().cyan()
+                        "  {}",
+                        tf("msg_target_file_loaded", &[target_path, &target_file.paths.len().to_string()]).green()
                     );
 
                     // Validate that paths are within watch directories
@@ -101,10 +99,8 @@ impl PathSyncManager {
         }
 
         println!(
-            "  {} Tracking {} unique paths across {} target files",
-            "📊".bright_blue(),
-            path_mappings.len().to_string().cyan(),
-            target_files.len().to_string().cyan()
+            "  {}",
+            tf("msg_tracking_summary", &[&path_mappings.len().to_string(), &target_files.len().to_string()]).bright_blue()
         );
 
         Ok(Self {
@@ -174,15 +170,13 @@ impl PathSyncManager {
             if path.exists() {
                 watcher.watch(path, RecursiveMode::Recursive)?;
                 println!(
-                    "  {} Watching: {}",
-                    "👁".bright_blue(),
-                    path.display().to_string().bright_white()
+                    "  {}",
+                    tf("msg_watching_path", &[&path.display().to_string()]).bright_blue()
                 );
             } else {
                 println!(
-                    "  {} Watch path does not exist: {}",
-                    "⚠".yellow(),
-                    watch_path.yellow()
+                    "  {}",
+                    tf("msg_watch_path_not_exist", &[watch_path]).yellow()
                 );
             }
         }
@@ -190,8 +184,8 @@ impl PathSyncManager {
         self.watcher = Some(watcher);
 
         println!(
-            "{} Path synchronization monitoring started",
-            "🚀".bright_green()
+            "{}",
+            t("msg_path_sync_monitoring_started").bright_green()
         );
 
         // Handle events in a separate thread
@@ -315,10 +309,8 @@ impl PathSyncManager {
     /// Manually sync a path change (for testing or manual operations)
     pub fn sync_path_change(&mut self, old_path: &str, new_path: &str) -> Result<()> {
         println!(
-            "{} Syncing path change: {} → {}",
-            "🔄".bright_blue(),
-            old_path.bright_white(),
-            new_path.bright_green()
+            "{}",
+            tf("msg_syncing_path_change", &[old_path, new_path]).bright_blue()
         );
 
         // Try to find the path mapping, considering both exact match and canonical path matching
@@ -353,9 +345,8 @@ impl PathSyncManager {
                     if let Some(target_file) = self.target_files.get_mut(file_idx) {
                         target_file.update_path(&key, new_path)?;
                         println!(
-                            "  {} Updated: {}",
-                            "✓".green(),
-                            target_file.path.display().to_string().bright_white()
+                            "  {}",
+                            tf("msg_target_file_updated", &[&target_file.path.display().to_string()]).green()
                         );
                     }
                 }
@@ -372,9 +363,8 @@ impl PathSyncManager {
             }
         } else {
             println!(
-                "  {} Path not found in tracking: {}",
-                "⚠".yellow(),
-                old_path.yellow()
+                "  {}",
+                tf("msg_path_not_found_in_tracking", &[old_path]).yellow()
             );
         }
 

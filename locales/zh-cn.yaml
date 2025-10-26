@@ -83,3 +83,28 @@ msg_starting_sync: "开始路径同步..."
 msg_sync_once_mode: "运行在一次性同步模式"
 msg_sync_monitoring: "路径同步监控已激活"
 msg_press_ctrl_c: "按 Ctrl+C 停止监控"
+
+# 消息 - 目标文件显示
+msg_target_files_header: "目标文件："
+msg_target_file_exists: "存在"
+msg_target_file_missing: "缺失"
+
+# 消息 - 路径同步操作
+msg_loading_target_files: "正在加载目标文件..."
+msg_target_file_loaded: "已加载：{0}（找到 {1} 个路径）"
+msg_target_file_created: "正在创建目标文件：{0}"
+msg_tracking_summary: "正在跟踪 {0} 个唯一路径，分布在 {1} 个目标文件中"
+msg_syncing_path_change: "正在同步路径更改：{0} -> {1}"
+msg_target_file_updated: "已更新：{0}"
+msg_path_not_found_in_tracking: "在跟踪中未找到路径：{0}"
+msg_target_files_updated: "目标文件已更新：{0} -> {1}"
+msg_failed_to_update_target_files: "更新目标文件失败：{0}"
+msg_could_not_initialize_path_sync: "无法初始化路径同步：{0}"
+
+# 消息 - 路径同步监控
+msg_watch_path_not_exist: "监控路径不存在：{0}"
+msg_path_sync_monitoring_started: "路径同步监控已启动"
+
+# 消息 - 手动路径更新
+msg_manual_path_update: "手动更新路径：{0} -> {1}"
+msg_path_update_completed: "路径更新成功完成！"

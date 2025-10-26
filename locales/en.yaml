@@ -83,3 +83,28 @@ msg_starting_sync: "Starting path synchronization..."
 msg_sync_once_mode: "Running in one-time sync mode"
 msg_sync_monitoring: "Path synchronization monitoring active"
 msg_press_ctrl_c: "Press Ctrl+C to stop monitoring"
+
+# Messages - Target files display
+msg_target_files_header: "Target Files:"
+msg_target_file_exists: "exists"
+msg_target_file_missing: "missing"
+
+# Messages - Path sync operations
+msg_loading_target_files: "Loading target files..."
+msg_target_file_loaded: "Loaded: {0} ({1} paths found)"
+msg_target_file_created: "Creating target file: {0}"
+msg_tracking_summary: "Tracking {0} unique paths across {1} target files"
+msg_syncing_path_change: "Syncing path change: {0} -> {1}"
+msg_target_file_updated: "Updated: {0}"
+msg_path_not_found_in_tracking: "Path not found in tracking: {0}"
+msg_target_files_updated: "Target files updated: {0} -> {1}"
+msg_failed_to_update_target_files: "Failed to update target files: {0}"
+msg_could_not_initialize_path_sync: "Could not initialize path sync: {0}"
+
+# Messages - Path synchronization monitoring
+msg_watch_path_not_exist: "Watch path does not exist: {0}"
+msg_path_sync_monitoring_started: "Path synchronization monitoring started"
+
+# Messages - Manual path update
+msg_manual_path_update: "Manually updating path: {0} -> {1}"
+msg_path_update_completed: "Path update completed successfully!"
