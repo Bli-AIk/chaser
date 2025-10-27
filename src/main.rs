@@ -129,12 +129,6 @@ fn handle_command(command: Commands) -> Result<()> {
         Commands::Status => {
             show_sync_status(&config)?;
         }
-        Commands::Sync { once } => {
-            run_path_sync(&config, once)?;
-        }
-        Commands::UpdatePath { old_path, new_path } => {
-            update_path_manually(&config, &old_path, &new_path)?;
-        }
     }
 
     Ok(())
@@ -434,51 +428,6 @@ fn show_sync_status(config: &Config) -> Result<()> {
 
     let manager = PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
     manager.print_status();
-
-    Ok(())
-}
-
-fn run_path_sync(config: &Config, once: bool) -> Result<()> {
-    config.validate_target_files()?;
-
-    println!("{}", t("msg_starting_sync").bright_green());
-
-    let mut manager =
-        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
-
-    if once {
-        println!("{}", t("msg_sync_once_mode").bright_blue());
-        manager.refresh()?;
-        manager.print_status();
-    } else {
-        manager.start_monitoring()?;
-        manager.print_status();
-
-        println!("\n{}", t("msg_sync_monitoring").bright_green());
-        println!("{}", t("msg_press_ctrl_c").bright_white());
-
-        // Keep the program running
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(1));
-        }
-    }
-
-    Ok(())
-}
-
-fn update_path_manually(config: &Config, old_path: &str, new_path: &str) -> Result<()> {
-    config.validate_target_files()?;
-
-    println!(
-        "{}",
-        tf("msg_manual_path_update", &[old_path, new_path]).bright_yellow()
-    );
-
-    let mut manager =
-        PathSyncManager::new(config.target_files.clone(), config.watch_paths.clone())?;
-    manager.sync_path_change(old_path, new_path)?;
-
-    println!("{}", t("msg_path_update_completed").bright_green());
 
     Ok(())
 }

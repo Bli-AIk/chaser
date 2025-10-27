@@ -385,34 +385,4 @@ fn test_new_commands() {
         cli::parse_command(&matches),
         Some(cli::Commands::Status)
     ));
-
-    // Test sync command
-    let command = setup_test_cli();
-    let matches = command.try_get_matches_from(&["chaser", "sync"]).unwrap();
-    match cli::parse_command(&matches) {
-        Some(cli::Commands::Sync { once }) => assert!(!once),
-        _ => panic!("Expected Sync command"),
-    }
-
-    let command = setup_test_cli();
-    let matches = command
-        .try_get_matches_from(&["chaser", "sync", "--once"])
-        .unwrap();
-    match cli::parse_command(&matches) {
-        Some(cli::Commands::Sync { once }) => assert!(once),
-        _ => panic!("Expected Sync command with once flag"),
-    }
-
-    // Test update-path command
-    let command = setup_test_cli();
-    let matches = command
-        .try_get_matches_from(&["chaser", "update-path", "/old/path", "/new/path"])
-        .unwrap();
-    match cli::parse_command(&matches) {
-        Some(cli::Commands::UpdatePath { old_path, new_path }) => {
-            assert_eq!(old_path, "/old/path");
-            assert_eq!(new_path, "/new/path");
-        }
-        _ => panic!("Expected UpdatePath command"),
-    }
 }

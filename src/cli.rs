@@ -72,30 +72,6 @@ pub fn build_cli() -> Command {
         )
         .subcommand(Command::new("list-targets").about(&t("cmd_list_targets")))
         .subcommand(Command::new("status").about(&t("cmd_status")))
-        .subcommand(
-            Command::new("sync").about(&t("cmd_sync")).arg(
-                Arg::new("once")
-                    .long("once")
-                    .help(&t("arg_sync_once"))
-                    .action(ArgAction::SetTrue),
-            ),
-        )
-        .subcommand(
-            Command::new("update-path")
-                .about(&t("cmd_update_path"))
-                .arg(
-                    Arg::new("old_path")
-                        .help(&t("arg_old_path"))
-                        .required(true)
-                        .index(1),
-                )
-                .arg(
-                    Arg::new("new_path")
-                        .help(&t("arg_new_path"))
-                        .required(true)
-                        .index(2),
-                ),
-        )
 }
 
 // 简化版CLI构建器，用于测试，不依赖国际化
@@ -176,32 +152,6 @@ pub fn build_test_cli() -> Command {
         )
         .subcommand(Command::new("list-targets").about("List all target files"))
         .subcommand(Command::new("status").about("Show path synchronization status"))
-        .subcommand(
-            Command::new("sync")
-                .about("Start path synchronization monitoring")
-                .arg(
-                    Arg::new("once")
-                        .long("once")
-                        .help("Perform one-time sync without monitoring")
-                        .action(ArgAction::SetTrue),
-                ),
-        )
-        .subcommand(
-            Command::new("update-path")
-                .about("Manually update a path in target files")
-                .arg(
-                    Arg::new("old_path")
-                        .help("Old path to replace")
-                        .required(true)
-                        .index(1),
-                )
-                .arg(
-                    Arg::new("new_path")
-                        .help("New path to replace with")
-                        .required(true)
-                        .index(2),
-                ),
-        )
 }
 
 #[derive(Debug)]
@@ -218,8 +168,6 @@ pub enum Commands {
     RemoveTarget { file: String },
     ListTargets,
     Status,
-    Sync { once: bool },
-    UpdatePath { old_path: String, new_path: String },
 }
 
 pub fn parse_command(matches: &clap::ArgMatches) -> Option<Commands> {
@@ -257,15 +205,6 @@ pub fn parse_command(matches: &clap::ArgMatches) -> Option<Commands> {
         }
         Some(("list-targets", _)) => Some(Commands::ListTargets),
         Some(("status", _)) => Some(Commands::Status),
-        Some(("sync", sub_matches)) => {
-            let once = sub_matches.get_flag("once");
-            Some(Commands::Sync { once })
-        }
-        Some(("update-path", sub_matches)) => {
-            let old_path = sub_matches.get_one::<String>("old_path").unwrap().clone();
-            let new_path = sub_matches.get_one::<String>("new_path").unwrap().clone();
-            Some(Commands::UpdatePath { old_path, new_path })
-        }
         _ => None,
     }
 }
@@ -448,44 +387,6 @@ mod tests {
     }
 
     #[test]
-    fn test_sync_command() {
-        let cli = setup_test_cli();
-        let matches = cli.try_get_matches_from(&["chaser", "sync"]).unwrap();
-        match parse_command(&matches) {
-            Some(Commands::Sync { once }) => {
-                assert!(!once);
-            }
-            _ => panic!("Expected Sync command"),
-        }
-
-        let cli = setup_test_cli();
-        let matches = cli
-            .try_get_matches_from(&["chaser", "sync", "--once"])
-            .unwrap();
-        match parse_command(&matches) {
-            Some(Commands::Sync { once }) => {
-                assert!(once);
-            }
-            _ => panic!("Expected Sync command with once flag"),
-        }
-    }
-
-    #[test]
-    fn test_update_path_command() {
-        let cli = setup_test_cli();
-        let matches = cli
-            .try_get_matches_from(&["chaser", "update-path", "/old/path", "/new/path"])
-            .unwrap();
-        match parse_command(&matches) {
-            Some(Commands::UpdatePath { old_path, new_path }) => {
-                assert_eq!(old_path, "/old/path");
-                assert_eq!(new_path, "/new/path");
-            }
-            _ => panic!("Expected UpdatePath command"),
-        }
-    }
-
-    #[test]
     fn test_invalid_command() {
         let cli = setup_test_cli();
         let result = cli.try_get_matches_from(&["chaser", "invalid"]);
@@ -518,15 +419,6 @@ mod tests {
         // Test Lang command without language
         let cli = setup_test_cli();
         let result = cli.try_get_matches_from(&["chaser", "lang"]);
-        assert!(result.is_err());
-
-        // Test UpdatePath command without paths
-        let cli = setup_test_cli();
-        let result = cli.try_get_matches_from(&["chaser", "update-path"]);
-        assert!(result.is_err());
-
-        let cli = setup_test_cli();
-        let result = cli.try_get_matches_from(&["chaser", "update-path", "/old/path"]);
         assert!(result.is_err());
     }
 

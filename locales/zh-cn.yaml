@@ -15,8 +15,6 @@ cmd_add_target: "为路径同步添加目标文件"
 cmd_remove_target: "移除目标文件"
 cmd_list_targets: "列出所有目标文件"
 cmd_status: "显示路径同步状态"
-cmd_sync: "启动路径同步监控"
-cmd_update_path: "手动更新目标文件中的路径"
 
 # 命令参数
 arg_path: "要添加到监控列表的路径"
@@ -26,9 +24,6 @@ arg_ignore_pattern: "要忽略的模式（例如：\"*.tmp\", \".git/**\"）"
 arg_language: "语言代码（en, zh-cn）"
 arg_target_file: "目标文件路径（json, yaml, toml, csv）"
 arg_target_file_remove: "要移除的目标文件路径"
-arg_sync_once: "执行一次性同步而不监控"
-arg_old_path: "要替换的旧路径"
-arg_new_path: "要替换为的新路径"
 
 # 消息 - 配置
 msg_config_loaded: "已从以下位置加载配置：{0}"
@@ -90,9 +85,6 @@ msg_no_targets_configured: "未配置目标文件。使用 'chaser add-target <f
 
 # 消息 - 路径同步
 msg_sync_status_header: "路径同步状态"
-msg_starting_sync: "开始路径同步..."
-msg_sync_once_mode: "运行在一次性同步模式"
-msg_sync_monitoring: "路径同步监控已激活"
 msg_press_ctrl_c: "按 Ctrl+C 停止监控"
 
 # 消息 - 目标文件显示
