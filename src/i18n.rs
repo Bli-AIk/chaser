@@ -109,9 +109,7 @@ impl I18n {
     fn parse_locale(locale_str: &str) -> Option<String> {
         let locale_lower = locale_str.to_lowercase();
 
-        if locale_lower.starts_with("zh")
-            && (locale_lower.contains("cn") || locale_lower.contains("hans"))
-        {
+        if locale_lower.starts_with("zh") {
             Some("zh-cn".to_string())
         } else if locale_lower.starts_with("en") {
             Some("en".to_string())
