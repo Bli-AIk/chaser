@@ -257,7 +257,7 @@ fn test_concurrent_access_simulation() {
         final_config.watch_paths.len()
     );
 
-    assert_eq!(final_config.watch_paths.len(), 1);
+    assert_eq!(final_config.watch_paths.len(), 0);
 }
 
 #[test]

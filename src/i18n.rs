@@ -1,8 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
 use sys_locale::get_locale;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -36,31 +34,20 @@ impl I18n {
     }
 
     fn load_locales(&mut self) -> Result<()> {
-        let locale_dir = Path::new("locales");
+        // Embed locale files at compile time
+        let embedded_locales = [
+            ("en", include_str!("../locales/en.yaml")),
+            ("zh-cn", include_str!("../locales/zh-cn.yaml")),
+        ];
 
-        if !locale_dir.exists() {
-            return Err(anyhow::anyhow!("Locales directory not found"));
-        }
+        for (locale_name, content) in embedded_locales {
+            let strings: HashMap<String, String> =
+                serde_yaml_ng::from_str(content).with_context(|| {
+                    format!("Failed to parse embedded locale file: {}", locale_name)
+                })?;
 
-        for entry in fs::read_dir(locale_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
-                if let Some(locale_name) = path.file_stem().and_then(|s| s.to_str()) {
-                    let content = fs::read_to_string(&path).with_context(|| {
-                        format!("Failed to read locale file: {}", path.display())
-                    })?;
-
-                    let strings: HashMap<String, String> = serde_yaml_ng::from_str(&content)
-                        .with_context(|| {
-                            format!("Failed to parse locale file: {}", path.display())
-                        })?;
-
-                    self.locales
-                        .insert(locale_name.to_string(), Locale { strings });
-                }
-            }
+            self.locales
+                .insert(locale_name.to_string(), Locale { strings });
         }
 
         Ok(())
@@ -122,9 +109,7 @@ impl I18n {
     fn parse_locale(locale_str: &str) -> Option<String> {
         let locale_lower = locale_str.to_lowercase();
 
-        if locale_lower.starts_with("zh")
-            && (locale_lower.contains("cn") || locale_lower.contains("hans"))
-        {
+        if locale_lower.starts_with("zh") {
             Some("zh-cn".to_string())
         } else if locale_lower.starts_with("en") {
             Some("en".to_string())
@@ -231,33 +216,6 @@ pub fn tf(key: &str, args: &[&str]) -> String {
 mod tests {
     use super::*;
     use std::env;
-    use std::path::PathBuf;
-    use tempfile::TempDir;
-
-    fn create_test_locale_files(temp_dir: &TempDir) -> PathBuf {
-        let locales_dir = temp_dir.path().join("locales");
-        fs::create_dir_all(&locales_dir).unwrap();
-
-        // Create test English locale file
-        let en_content = r#"
-test_key: "Test message"
-test_with_param: "Hello {0}"
-test_multiple_params: "User {0} has {1} items"
-greeting: "Hello"
-"#;
-        fs::write(locales_dir.join("en.yaml"), en_content).unwrap();
-
-        // Create test Chinese locale file
-        let zh_cn_content = r#"
-test_key: "测试消息"
-test_with_param: "你好 {0}"
-test_multiple_params: "用户 {0} 有 {1} 个项目"
-greeting: "你好"
-"#;
-        fs::write(locales_dir.join("zh-cn.yaml"), zh_cn_content).unwrap();
-
-        locales_dir
-    }
 
     #[test]
     fn test_locale_struct() {
@@ -272,35 +230,14 @@ greeting: "你好"
 
     #[test]
     fn test_i18n_new() {
-        let temp_dir = TempDir::new().unwrap();
-        let _locales_dir = create_test_locale_files(&temp_dir);
+        // With embedded locales, this should always work
+        let result = I18n::new();
+        assert!(result.is_ok());
 
-        // Change to temp directory for testing
-        let original_dir = env::current_dir().unwrap();
-
-        // Don't use unwrap on set_current_dir since it might fail
-        if env::set_current_dir(temp_dir.path()).is_ok() {
-            let result = I18n::new();
-
-            // Restore original directory
-            let _ = env::set_current_dir(original_dir);
-
-            // The test might fail if locales directory structure is not exactly right
-            // Just ensure it doesn't panic
-            match result {
-                Ok(i18n) => {
-                    assert!(!i18n.current_locale.is_empty());
-                }
-                Err(_) => {
-                    // This is expected if the locales directory structure is not perfect
-                    // The main thing is that it doesn't panic
-                }
-            }
-        } else {
-            // If we can't change directories, just skip this test
-            // Restore original directory
-            let _ = env::set_current_dir(original_dir);
-        }
+        let i18n = result.unwrap();
+        assert!(!i18n.current_locale.is_empty());
+        assert!(i18n.locales.contains_key("en"));
+        assert!(i18n.locales.contains_key("zh-cn"));
     }
 
     #[test]
@@ -511,25 +448,16 @@ greeting: "你好"
 
     #[test]
     fn test_init_i18n_with_locale() {
-        let temp_dir = TempDir::new().unwrap();
-        let _locales_dir = create_test_locale_files(&temp_dir);
-
-        // Change to temp directory for testing
-        let original_dir = env::current_dir().unwrap();
-        if env::set_current_dir(temp_dir.path()).is_ok() {
-            let result = init_i18n_with_locale("en");
-
-            // Restore original directory
-            let _ = env::set_current_dir(original_dir);
-
-            if result.is_ok() {
-                // If successful, test that global functions work
-                let message = t("test_key");
-                // Should either return translated text or the key itself
-                assert!(!message.is_empty());
-            }
-            // If it fails, it's expected when locales directory doesn't exist
+        // With embedded locales, this should always work
+        let result = init_i18n_with_locale("en");
+        if result.is_ok() {
+            // If successful, test that global functions work
+            let message = t("test_key");
+            // Should either return translated text or the key itself
+            assert!(!message.is_empty());
         }
+        // Reset for other tests
+        let _ = init_i18n_with_locale("en");
     }
 
     #[test]
