@@ -261,7 +261,9 @@ impl Config {
     /// Validate target files have at least one entry
     pub fn validate_target_files(&self) -> Result<()> {
         if self.target_files.is_empty() {
-            anyhow::bail!("At least one target file must be configured");
+            let error_msg = crate::i18n::t("msg_error_no_target_files");
+            let hint_msg = crate::i18n::t("msg_error_no_target_files_hint");
+            anyhow::bail!("{}. {}", error_msg, hint_msg);
         }
         Ok(())
     }

@@ -116,6 +116,6 @@ msg_could_not_initialize_path_sync: "Could not initialize path sync: {0}"
 msg_watch_path_not_exist: "Watch path does not exist: {0}"
 msg_path_sync_monitoring_started: "Path synchronization monitoring started"
 
-# Messages - Manual path update
-msg_manual_path_update: "Manually updating path: {0} -> {1}"
-msg_path_update_completed: "Path update completed successfully!"
+# Messages - Error handling
+msg_error_no_target_files: "At least one target file must be configured"
+msg_error_no_target_files_hint: "Use 'chaser add-target <file>' to add a target file"
