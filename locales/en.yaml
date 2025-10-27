@@ -15,8 +15,6 @@ cmd_add_target: "Add a target file for path synchronization"
 cmd_remove_target: "Remove a target file"
 cmd_list_targets: "List all target files"
 cmd_status: "Show path synchronization status"
-cmd_sync: "Start path synchronization monitoring"
-cmd_update_path: "Manually update a path in target files"
 
 # Command arguments
 arg_path: "Path to add to watch list"
@@ -26,9 +24,6 @@ arg_ignore_pattern: "Pattern to ignore (e.g., \"*.tmp\", \".git/**\")"
 arg_language: "Language code (en, zh-cn)"
 arg_target_file: "Target file path (json, yaml, toml, csv)"
 arg_target_file_remove: "Target file path to remove"
-arg_sync_once: "Perform one-time sync without monitoring"
-arg_old_path: "Old path to replace"
-arg_new_path: "New path to replace with"
 
 # Messages - Configuration
 msg_config_loaded: "Loaded config from: {0}"
@@ -90,9 +85,6 @@ msg_no_targets_configured: "No target files configured. Use 'chaser add-target <
 
 # Messages - Path synchronization
 msg_sync_status_header: "Path Synchronization Status"
-msg_starting_sync: "Starting path synchronization..."
-msg_sync_once_mode: "Running in one-time sync mode"
-msg_sync_monitoring: "Path synchronization monitoring active"
 msg_press_ctrl_c: "Press Ctrl+C to stop monitoring"
 
 # Messages - Target files display
