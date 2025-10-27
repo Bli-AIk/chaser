@@ -41,8 +41,8 @@ impl I18n {
         ];
 
         for (locale_name, content) in embedded_locales {
-            let strings: HashMap<String, String> = serde_yaml_ng::from_str(content)
-                .with_context(|| {
+            let strings: HashMap<String, String> =
+                serde_yaml_ng::from_str(content).with_context(|| {
                     format!("Failed to parse embedded locale file: {}", locale_name)
                 })?;
 
@@ -235,7 +235,7 @@ mod tests {
         // With embedded locales, this should always work
         let result = I18n::new();
         assert!(result.is_ok());
-        
+
         let i18n = result.unwrap();
         assert!(!i18n.current_locale.is_empty());
         assert!(i18n.locales.contains_key("en"));
