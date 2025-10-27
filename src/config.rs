@@ -17,7 +17,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            watch_paths: vec!["./test_files".to_string()],
+            watch_paths: vec![],
             recursive: true,
             ignore_patterns: vec![
                 "*.tmp".to_string(),
@@ -26,7 +26,7 @@ impl Default for Config {
                 "target/**".to_string(),
             ],
             language: None,
-            target_files: vec!["paths.json".to_string()],
+            target_files: vec![],
         }
     }
 }
@@ -288,13 +288,14 @@ mod tests {
     #[test]
     fn test_config_default() {
         let config = Config::default();
-        assert_eq!(config.watch_paths, vec!["./test_files"]);
+        assert_eq!(config.watch_paths, Vec::<String>::new());
         assert_eq!(config.recursive, true);
         assert_eq!(
             config.ignore_patterns,
             vec!["*.tmp", "*.log", ".git/**", "target/**"]
         );
         assert_eq!(config.language, None);
+        assert_eq!(config.target_files, Vec::<String>::new());
     }
 
     #[test]
