@@ -116,6 +116,6 @@ msg_could_not_initialize_path_sync: "无法初始化路径同步：{0}"
 msg_watch_path_not_exist: "监控路径不存在：{0}"
 msg_path_sync_monitoring_started: "路径同步监控已启动"
 
-# 消息 - 手动路径更新
-msg_manual_path_update: "手动更新路径：{0} -> {1}"
-msg_path_update_completed: "路径更新成功完成！"
+# 消息 - 错误处理
+msg_error_no_target_files: "必须配置至少一个目标文件"
+msg_error_no_target_files_hint: "使用 'chaser add-target <文件>' 来添加目标文件"
