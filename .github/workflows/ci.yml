@@ -21,7 +21,7 @@ jobs:
           - beta
           - nightly
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
 
     
@@ -87,7 +87,7 @@ jobs:
             asset_name: chaser-macos-universal
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
 
 
     
